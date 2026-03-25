@@ -101,9 +101,9 @@ export default function CalendarPage() {
                 <div className={`w-2.5 h-2.5 rounded-full ${cfg.dot}`} />
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{cfg.label}</span>
                 {RESTRICTED_EVENT_TYPES.includes(type as CalendarEventType) ? (
-                  <Lock className="w-3 h-3 text-slate-400" title="Project members only" />
+                  <Lock className="w-3 h-3 text-slate-400" aria-label="Project members only" role="img" />
                 ) : (
-                  <Globe className="w-3 h-3 text-slate-400" title="Visible to everyone" />
+                  <Globe className="w-3 h-3 text-slate-400" aria-label="Visible to everyone" role="img" />
                 )}
               </div>
             ))}
