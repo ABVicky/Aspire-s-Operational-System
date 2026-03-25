@@ -98,12 +98,12 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="relative min-h-screen bg-black flex items-center justify-center p-6 overflow-hidden font-mono bg-[radial-gradient(circle_at_center,rgba(176,30,106,0.05)_0%,transparent_70%)]">
+    <main className="relative min-h-screen bg-black flex items-center justify-center p-6 overflow-hidden font-mono bg-[radial-gradient(circle_at_center,rgba(255,31,139,0.15)_0%,transparent_70%)]">
       
       {/* CRT Overlay Effects */}
       <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden">
         {/* Scanlines */}
-        <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.5)_50%),linear-gradient(90deg,rgba(176,30,106,0.03),rgba(0,255,0,0.01),rgba(176,30,106,0.03))] bg-[length:100%_3px,2px_100%]" />
+        <div className="absolute inset-0 opacity-[0.08] bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.5)_50%),linear-gradient(90deg,rgba(255,31,139,0.03),rgba(0,255,0,0.01),rgba(255,31,139,0.03))] bg-[length:100%_3px,2px_100%]" />
         {/* Screen Flicker */}
         <div className="absolute inset-0 bg-white/5 mix-blend-overlay animate-flicker pointer-events-none" />
         {/* Static Grain */}
@@ -120,14 +120,14 @@ export default function LoginPage() {
             className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none bg-black/0"
           >
             <motion.div 
-              initial={{ scaleY: 0.005, scaleX: 1, backgroundColor: "#b01e6a" }}
+              initial={{ scaleY: 0.005, scaleX: 1, backgroundColor: "#ff1f8b" }}
               animate={{ 
                 scaleY: [0.005, 0.005, 0.005, 120], 
                 scaleX: [1, 1, 0.01, 0.01],
-                backgroundColor: ["#b01e6a", "#b01e6a", "#fff", "#fff"],
+                backgroundColor: ["#ff1f8b", "#ff1f8b", "#fff", "#fff"],
               }}
               transition={{ duration: 1.2, times: [0, 0.3, 0.6, 1], ease: "easeInOut" }}
-              className="w-full h-[2px] shadow-[0_0_100px_#fff,0_0_20px_#b01e6a]" 
+              className="w-full h-[2px] shadow-[0_0_100px_#fff,0_0_20px_#ff1f8b]" 
             />
           </motion.div>
         )}
@@ -146,7 +146,7 @@ export default function LoginPage() {
                   key={i}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-[#b01e6a]/80 text-sm md:text-base tracking-widest leading-relaxed uppercase"
+                  className="text-[#ff1f8b] text-sm md:text-base font-bold tracking-widest leading-relaxed uppercase"
                 >
                   {item.text}
                 </motion.p>
@@ -155,7 +155,7 @@ export default function LoginPage() {
                 <motion.span 
                   animate={{ opacity: [1, 0] }}
                   transition={{ repeat: Infinity, duration: 0.4 }}
-                  className="inline-block w-2.5 h-6 bg-[#b01e6a]/80 align-middle ml-1"
+                  className="inline-block w-2.5 h-6 bg-[#ff1f8b] align-middle ml-1"
                 />
               )}
             </div>
@@ -163,24 +163,24 @@ export default function LoginPage() {
         ) : (
           <motion.div 
             key="login-terminal"
-            drag
+            drag={typeof window !== 'undefined' && window.innerWidth > 768}
             dragConstraints={constraintsRef as any}
             dragElastic={0.05}
             dragMomentum={false}
             initial={{ opacity: 0, scale: 1.05 }}
             animate={{ opacity: isEntering ? 0 : 1, scale: isEntering ? 0.95 : 1 }}
-            className="relative z-10 w-full max-w-lg cursor-grab active:cursor-grabbing"
+            className="relative z-10 w-full max-w-lg cursor-grab active:cursor-grabbing sm:p-0 p-4"
           >
-            <div className="bg-black border-2 border-[#b01e6a]/30 p-10 md:p-14 shadow-[0_0_50px_rgba(176,30,106,0.1)] rounded-lg relative overflow-hidden group">
+            <div className="bg-black border-2 border-[#ff1f8b] p-10 md:p-14 shadow-[0_0_80px_rgba(255,31,139,0.25)] rounded-lg relative overflow-hidden group">
               {/* Screen Distortion Glow */}
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(176,30,106,0.03)_0%,transparent_100%)] pointer-events-none" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,31,139,0.1)_0%,transparent_100%)] pointer-events-none" />
               
-              <div className="border-b-2 border-[#b01e6a]/20 pb-8 mb-10 text-center">
+              <div className="border-b-2 border-[#ff1f8b] pb-8 mb-10 text-center">
                 <div className="flex justify-center mb-6">
                   <motion.div 
                     animate={{ scale: [1, 1.05, 1], rotate: [0, 2, -2, 0] }}
                     transition={{ duration: 4, repeat: Infinity }}
-                    className="p-3 bg-white/95 border-2 border-[#b01e6a]/40 rounded-3xl min-w-[72px] min-h-[72px] flex items-center justify-center shadow-xl shadow-[#b01e6a]/10"
+                    className="p-3 bg-white/95 border-2 border-[#ff1f8b] rounded-3xl min-w-[72px] min-h-[72px] flex items-center justify-center shadow-xl shadow-[#ff1f8b]/20"
                   >
                     <img 
                       src="/logo.png" 
@@ -190,45 +190,45 @@ export default function LoginPage() {
                         e.currentTarget.style.display = 'none';
                         const parent = e.currentTarget.parentElement;
                         if (parent) {
-                          parent.style.backgroundColor = '#b01e6a';
+                          parent.style.backgroundColor = '#ff1f8b';
                           parent.innerHTML = '<span class="text-white font-black text-4xl">A</span>';
                         }
                       }}
                     />
                   </motion.div>
                 </div>
-                <h1 className="text-4xl font-black text-[#b01e6a] tracking-[0.2em] mb-2 uppercase">TERMINAL-OS</h1>
-                <p className="text-[10px] font-bold text-[#b01e6a]/60 uppercase tracking-[0.5em]">SYSTEM ACCESS LEVEL: OMEGA</p>
+                <h1 className="text-4xl font-black text-[#ff1f8b] tracking-[0.2em] mb-2 uppercase drop-shadow-[0_0_10px_rgba(255,31,139,0.5)]">TERMINAL-OS</h1>
+                <p className="text-[10px] font-bold text-[#ff1f8b] uppercase tracking-[0.5em]">SYSTEM ACCESS LEVEL: OMEGA</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-8">
                 <div className="space-y-6">
                   <div className="relative group/input">
                     <div className="flex justify-between items-center mb-2">
-                      <label className="text-[10px] font-bold text-[#b01e6a]/70 uppercase tracking-widest">Agent_ID</label>
-                      <Terminal className="w-3 h-3 text-[#b01e6a]/30" />
+                      <label className="text-[10px] font-bold text-[#ff1f8b] uppercase tracking-widest">Agent_ID</label>
+                      <Terminal className="w-3 h-3 text-[#ff1f8b]/50" />
                     </div>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="USER_NAME"
-                      className="w-full bg-black border-2 border-[#b01e6a]/20 px-6 py-4 text-[#b01e6a] placeholder-[#b01e6a]/10 focus:outline-none focus:border-[#b01e6a] transition-all text-sm tracking-widest rounded-md"
+                      className="w-full bg-black border-2 border-[#ff1f8b]/30 px-6 py-4 text-[#ff1f8b] placeholder-[#ff1f8b]/20 focus:outline-none focus:border-[#ff1f8b] transition-all text-sm tracking-widest rounded-md"
                       disabled={loading || isEntering}
                     />
                   </div>
 
                   <div className="relative group/input">
                     <div className="flex justify-between items-center mb-2">
-                      <label className="text-[10px] font-bold text-[#b01e6a]/70 uppercase tracking-widest">Security_Cipher</label>
-                      <Lock className="w-3 h-3 text-[#b01e6a]/30" />
+                      <label className="text-[10px] font-bold text-[#ff1f8b] uppercase tracking-widest">Security_Cipher</label>
+                      <Lock className="w-3 h-3 text-[#ff1f8b]/50" />
                     </div>
                     <input
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="********"
-                      className="w-full bg-black border-2 border-[#b01e6a]/20 px-6 py-4 text-[#b01e6a] placeholder-[#b01e6a]/10 focus:outline-none focus:border-[#b01e6a] transition-all text-sm tracking-widest rounded-md"
+                      className="w-full bg-black border-2 border-[#ff1f8b]/30 px-6 py-4 text-[#ff1f8b] placeholder-[#ff1f8b]/20 focus:outline-none focus:border-[#ff1f8b] transition-all text-sm tracking-widest rounded-md"
                       disabled={loading || isEntering}
                     />
                   </div>
@@ -238,9 +238,9 @@ export default function LoginPage() {
                   <motion.button
                     type="submit"
                     disabled={loading || isEntering}
-                    whileHover={{ scale: 1.02, backgroundColor: "rgba(176,30,106,0.1)" }}
+                    whileHover={{ scale: 1.02, backgroundColor: "rgba(255,31,139,0.15)" }}
                     whileTap={{ scale: 0.98 }}
-                    className="w-full py-5 border-2 border-[#b01e6a] text-[#b01e6a] font-black text-xs uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-3 relative overflow-hidden group/btn disabled:opacity-50 hover-glitch"
+                    className="w-full py-5 border-2 border-[#ff1f8b] text-[#ff1f8b] font-black text-xs uppercase tracking-[0.4em] transition-all flex items-center justify-center gap-3 relative overflow-hidden group/btn disabled:opacity-50 hover-glitch shadow-[0_0_20px_rgba(255,31,139,0.2)]"
                   >
                     {loading ? (
                       <div className="flex items-center gap-2">
@@ -251,24 +251,24 @@ export default function LoginPage() {
                       <>INITIALIZE PORTAL</>
                     )}
                     {/* Hover Glow */}
-                    <div className="absolute inset-0 bg-[#b01e6a]/20 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
+                    <div className="absolute inset-0 bg-[#ff1f8b]/20 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                   </motion.button>
                 </div>
               </form>
 
               {/* System Messages */}
-              <div className="mt-10 pt-6 border-t border-[#b01e6a]/10 flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-[8px] font-bold text-[#b01e6a]/40 uppercase">
+              <div className="mt-10 pt-6 border-t border-[#ff1f8b]/20 flex flex-col gap-2">
+                <div className="flex items-center gap-2 text-[8px] font-bold text-[#ff1f8b]/80 uppercase">
                   <AlertTriangle className="w-3 h-3" /> Warning: Unauthorised access is strictly prohibited
                 </div>
-                <div className="flex justify-between items-center text-[8px] font-bold text-[#b01e6a]/30 uppercase">
+                <div className="flex justify-between items-center text-[8px] font-bold text-[#ff1f8b]/60 uppercase">
                   <span>LAT: 22.5726 N</span>
                   <span>LNG: 88.3639 E</span>
                 </div>
               </div>
             </div>
 
-            <p className="text-center text-[#b01e6a]/20 text-[10px] uppercase tracking-[0.6em] mt-12">
+            <p className="text-center text-[#ff1f8b]/60 text-[10px] uppercase tracking-[0.6em] mt-12">
               (C) DIGITAL ASPIRE CORP. MCMLXXIV
             </p>
           </motion.div>
@@ -276,6 +276,10 @@ export default function LoginPage() {
       </AnimatePresence>
 
       <style jsx global>{`
+        :root {
+          --terminal-primary: #ff1f8b;
+          --terminal-glow: rgba(255, 31, 139, 0.4);
+        }
         @keyframes flicker {
           0% { opacity: 0.97; }
           5% { opacity: 0.95; }
