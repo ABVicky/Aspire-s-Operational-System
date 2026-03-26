@@ -245,7 +245,7 @@ export const MOCK_TIME_LOGS: TimeLog[] = [
 
 // ─── API Service ─────────────────────────────────────────────────────────────
 
-const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL;
+const APPS_SCRIPT_URL = process.env.NEXT_PUBLIC_APPS_SCRIPT_URL?.trim();
 const USE_MOCK = !APPS_SCRIPT_URL;
 
 async function callAPI<T>(action: string, params: Record<string, unknown> = {}): Promise<T> {
@@ -298,7 +298,8 @@ export async function login(email: string, password: string): Promise<User> {
 export async function updateUser(u: Partial<User> & { id: string }): Promise<User> {
   if (USE_MOCK) {
     const idx = MOCK_USERS.findIndex(x => x.id === u.id);
-    if (idx !== -1) MOCK_USERS[idx] = { ...MOCK_USERS[idx], ...u };
+    if (idx === -1) throw new Error('User not found');
+    MOCK_USERS[idx] = { ...MOCK_USERS[idx], ...u };
     return MOCK_USERS[idx];
   }
   return postAPI<User>('updateUser', u);
@@ -307,7 +308,8 @@ export async function updateUser(u: Partial<User> & { id: string }): Promise<Use
 export async function uploadAvatar(userId: string, base64: string, fileName: string): Promise<{ avatar: string }> {
   if (USE_MOCK) {
     const idx = MOCK_USERS.findIndex(x => x.id === userId);
-    if (idx !== -1) MOCK_USERS[idx].avatar = base64; // In mock just store data URL
+    if (idx === -1) throw new Error('User not found');
+    MOCK_USERS[idx].avatar = base64; // In mock just store data URL
     return { avatar: base64 };
   }
   return postAPI<{ avatar: string }>('uploadAvatar', { userId, base64, fileName });

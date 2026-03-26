@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, Cpu, Zap, Activity } from 'lucide-react';
 
+function rand01(seed: number) {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
 export default function TransitionPortal() {
   const [phase, setPhase] = useState<'ancient' | 'glitch' | 'modern' | 'complete'>('ancient');
 
@@ -71,29 +76,40 @@ export default function TransitionPortal() {
             className="absolute inset-0 bg-indigo-950/20 flex items-center justify-center"
           >
             <div className="relative w-full h-full">
-              {[...Array(20)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ 
-                    x: Math.random() * 100 - 50 + "%", 
-                    y: Math.random() * 100 - 50 + "%",
-                    width: Math.random() * 200 + 50,
-                    height: Math.random() * 2 + 1,
-                    opacity: 0
-                  }}
-                  animate={{ 
-                    opacity: [0, 1, 0],
-                    x: [Math.random() * 100 - 50 + "%", Math.random() * 100 - 50 + "%"],
-                    backgroundColor: ["#b01e6a", "#4f46e5", "#fff"]
-                  }}
-                  transition={{ 
-                    duration: 0.2, 
-                    repeat: Infinity,
-                    delay: Math.random() * 0.5
-                  }}
-                  className="absolute"
-                />
-              ))}
+              {[...Array(20)].map((_, i) => {
+                // Deterministic "random" values to avoid server/client hydration mismatches.
+                const r1 = rand01(i + 1);
+                const r2 = rand01(i + 21);
+                const r3 = rand01(i + 41);
+                const r4 = rand01(i + 61);
+                const r5 = rand01(i + 81);
+                const r6 = rand01(i + 101);
+                const rDelay = rand01(i + 121);
+
+                return (
+                  <motion.div
+                    key={i}
+                    initial={{
+                      x: r1 * 100 - 50 + '%',
+                      y: r2 * 100 - 50 + '%',
+                      width: r3 * 200 + 50,
+                      height: r4 * 2 + 1,
+                      opacity: 0,
+                    }}
+                    animate={{
+                      opacity: [0, 1, 0],
+                      x: [r5 * 100 - 50 + '%', r6 * 100 - 50 + '%'],
+                      backgroundColor: ['#b01e6a', '#4f46e5', '#fff'],
+                    }}
+                    transition={{
+                      duration: 0.2,
+                      repeat: Infinity,
+                      delay: rDelay * 0.5,
+                    }}
+                    className="absolute"
+                  />
+                );
+              })}
               <div className="absolute inset-0 flex items-center justify-center">
                 <motion.div 
                   animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}

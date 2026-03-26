@@ -36,6 +36,15 @@ const THEME = {
   rose: '#f43f5e',
 };
 
+function seeded01(seed: string) {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0;
+  }
+  const x = Math.sin(hash) * 10000;
+  return x - Math.floor(x);
+}
+
 export default function AnalyticsPage() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -149,7 +158,8 @@ export default function AnalyticsPage() {
                   .filter(u => u.role === 'member' && (u.name.toLowerCase().includes(memberSearch.toLowerCase()) || u.department?.toLowerCase().includes(memberSearch.toLowerCase())))
                   .map(m => {
                     const tasks = data.tasks.filter(t => t.assigneeId === m.id);
-                    const score = 75 + Math.random() * 20;
+                    // Deterministic score to avoid server/client hydration mismatches.
+                    const score = 75 + seeded01(m.id) * 20;
                     return (
                       <tr key={m.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-950/10 transition-premium cursor-pointer">
                         <td className="px-8 py-6">

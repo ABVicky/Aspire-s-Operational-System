@@ -60,6 +60,59 @@ body {
   transition: background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1), color 0.5s;
 }
 
+/* Improve tap feel on mobile browsers */
+a, button, input, textarea, select {
+  touch-action: manipulation;
+}
+
+/* Visible focus ring (helps accessibility when some components use `outline-none`) */
+:focus-visible {
+  outline: 2px solid rgba(79, 70, 229, 0.65);
+  outline-offset: 2px;
+}
+
+/* Fun cursor tail (desktop only, enabled via JS by adding `cursor-hidden` to <body>) */
+.cursor-hidden {
+  cursor: none;
+}
+
+@media (pointer: coarse) {
+  .cursor-hidden {
+    cursor: auto;
+  }
+}
+
+.cursor-tail-wrap {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 100000;
+}
+
+.cursor-tail-cursor {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 31, 139, 0.25);
+  border: 1px solid rgba(255, 31, 139, 0.35);
+  box-shadow: 0 0 0 6px rgba(79, 70, 229, 0.08), 0 0 40px rgba(255, 31, 139, 0.12);
+}
+
+.cursor-tail-segment {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 999px;
+  background: rgba(79, 70, 229, 0.16);
+  border: 1px solid rgba(79, 70, 229, 0.20);
+}
+
 h1, h2, h3, h4, .font-display {
   font-family: var(--font-display);
 }

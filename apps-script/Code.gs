@@ -23,6 +23,9 @@ const SHEETS = {
   CLIENTS: 'Clients',
   TIME_LOGS: 'TimeLogs',
   COMMENTS: 'Comments',
+  LEADS: 'Leads',
+  CALENDAR_EVENTS: 'CalendarEvents',
+  APPROVALS: 'Approvals',
 };
 
 // ─── CORS Headers ─────────────────────────────────────────────────────────────
@@ -58,6 +61,8 @@ function doGet(e) {
       case 'getClients':      return jsonResponse(getClients());
       case 'getComments':     return jsonResponse(getComments(params.taskId));
       case 'getTimeLogs':     return jsonResponse(getTimeLogs(params.taskId, params.projectId));
+      case 'getLeads':        return jsonResponse(getLeads());
+      case 'getCalendarEvents': return jsonResponse(getCalendarEvents());
       case 'getDashboardStats': return jsonResponse(getDashboardStats());
       case 'setup':          setupDatabase(); return jsonResponse({ success: true, message: 'Database initialized!' });
       default:                return errorResponse('Unknown action: ' + action);
@@ -79,7 +84,7 @@ function onOpen() {
 }
 
 function manualClearCache() {
-  const keys = ['users', 'projects', 'tasks', 'clients'];
+  const keys = ['users', 'projects', 'tasks', 'clients', 'leads', 'calendarEvents'];
   keys.forEach(k => { invalidateCache(k); });
   SpreadsheetApp.getUi().alert('Cache cleared successfully!');
 }
@@ -92,7 +97,21 @@ function setupDatabase() {
   // Create default admin if Users is empty
   const userSheet = getSheet(SHEETS.USERS);
   if (userSheet.getLastRow() < 2) {
-    const admin = ['u_1', 'Aspire Admin', 'admin@aspire.os', 'admin123', 'admin', '888-000-0000', 'Creative', '', new Date().toISOString()];
+    // IMPORTANT: must match `initSheet()` header order:
+    // ['id', 'name', 'email', 'password', 'role', 'managerId', 'rating', 'phone', 'department', 'avatar', 'createdAt']
+    const admin = [
+      'u_1',
+      'Aspire Admin',
+      'admin@aspire.os',
+      'admin123',
+      'admin',
+      '', // managerId
+      '', // rating
+      '888-000-0000', // phone
+      'Creative', // department
+      '', // avatar
+      new Date().toISOString(), // createdAt
+    ];
     userSheet.appendRow(admin);
   }
   
@@ -119,6 +138,14 @@ function doPost(e) {
       case 'logTime':        return jsonResponse(logTime(body));
       case 'updateUser':     return jsonResponse(updateUser(body));
       case 'uploadAvatar':   return jsonResponse(uploadAvatar(body.userId, body.base64, body.fileName));
+      case 'createLead':              return jsonResponse(createLead(body));
+      case 'updateLead':              return jsonResponse(updateLead(body));
+      case 'deleteLead':              deleteLead(body.id); return jsonResponse({ success: true });
+      case 'createCalendarEvent':    return jsonResponse(createCalendarEvent(body));
+      case 'updateCalendarEvent':    return jsonResponse(updateCalendarEvent(body));
+      case 'deleteCalendarEvent':    deleteCalendarEvent(body.id); return jsonResponse({ success: true });
+      case 'requestApproval':         return jsonResponse(requestApproval(body));
+      case 'submitApproval':          return jsonResponse(submitApproval(body));
       default:               return errorResponse('Unknown action: ' + action);
     }
   } catch (err) {
@@ -147,6 +174,17 @@ function initSheet(sheet, name) {
     [SHEETS.CLIENTS]:   ['id', 'name', 'email', 'phone', 'company', 'paymentStatus', 'createdAt', 'updatedAt'],
     [SHEETS.TIME_LOGS]: ['id', 'taskId', 'projectId', 'userId', 'userName', 'startTime', 'endTime', 'duration', 'notes', 'createdAt'],
     [SHEETS.COMMENTS]:  ['id', 'taskId', 'userId', 'userName', 'text', 'createdAt'],
+    [SHEETS.LEADS]: [
+      'id', 'name', 'company', 'email', 'phone', 'source', 'status', 'value', 'notes', 'assigneeId', 'assigneeName', 'createdAt', 'updatedAt'
+    ],
+    [SHEETS.CALENDAR_EVENTS]: [
+      'id', 'title', 'type', 'description', 'date', 'time', 'platform',
+      'assigneeId', 'assigneeName', 'projectId', 'projectName', 'clientId', 'clientName',
+      'createdAt', 'updatedAt'
+    ],
+    [SHEETS.APPROVALS]: [
+      'id', 'taskId', 'approverId', 'approverName', 'status', 'remark', 'createdAt', 'updatedAt'
+    ],
   };
   const h = headers[name];
   if (h) {
@@ -265,7 +303,9 @@ function uploadAvatar(userId, base64, fileName) {
   const file = folder.createFile(blob);
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   
-  const fileUrl = 'https://lh3.googleusercontent.com/u/0/d/' + file.getId();
+  // Use a stable Drive "uc" URL so the frontend can render consistently.
+  // (The UI already normalizes `drive.google.com` links.)
+  const fileUrl = 'https://drive.google.com/uc?id=' + file.getId();
   
   // Update user with new avatar URL
   const sheet = getSheet(SHEETS.USERS);
@@ -317,6 +357,28 @@ function getTasks(projectId) {
   const sheet = getSheet(SHEETS.TASKS);
   let data = sheetToObjects(sheet);
   if (projectId) data = data.filter(t => t.projectId === projectId);
+
+  // Attach approval workflow data for UI: `approvalRequired` + `approvals[]`.
+  // This is derived from the Approvals sheet (Tasks sheet doesn't store approval details).
+  const approvalsSheet = getSheet(SHEETS.APPROVALS);
+  const allApprovals = sheetToObjects(approvalsSheet).map(a => normalizeApproval(a));
+  const approvalsByTaskId = {};
+  allApprovals.forEach(a => {
+    const key = String(a.taskId);
+    if (!approvalsByTaskId[key]) approvalsByTaskId[key] = [];
+    approvalsByTaskId[key].push(a);
+  });
+
+  data = data.map(t => {
+    const taskApprovals = approvalsByTaskId[String(t.id)] || [];
+    return {
+      ...t,
+      approvalRequired: taskApprovals.length > 0,
+      approverIds: taskApprovals.map(a => a.approverId),
+      approvals: taskApprovals,
+    };
+  });
+
   setCached(cacheKey, data, 60);
   return data;
 }
@@ -491,4 +553,311 @@ function getDashboardStats() {
     timeLoggedByDay: Object.entries(days).map(([date, hours]) => ({ date, hours: Math.round(hours * 10) / 10 })),
     recentActivity,
   };
+}
+
+// ─── Misc helpers ──────────────────────────────────────────────────────────
+
+function genId(prefix) {
+  // Stable-ish enough IDs for created rows (approvals/comments/leads/calendar).
+  const p = prefix ? String(prefix) + '_' : '';
+  return p + Utilities.getUuid();
+}
+
+function normalizeApproval(a) {
+  return {
+    id: a.id || genId('ap'),
+    taskId: a.taskId || '',
+    approverId: a.approverId || '',
+    approverName: a.approverName || '',
+    status: a.status || 'pending',
+    remark: a.remark || '',
+    createdAt: a.createdAt || new Date().toISOString(),
+    updatedAt: a.updatedAt || a.createdAt || new Date().toISOString(),
+  };
+}
+
+function normalizeLead(l) {
+  const rawValue = l.value;
+  const parsedValue =
+    rawValue === undefined || rawValue === null || rawValue === '' ? undefined :
+      (() => {
+        const n = typeof rawValue === 'number' ? rawValue : parseFloat(rawValue);
+        return Number.isFinite(n) ? n : undefined;
+      })();
+
+  return {
+    id: l.id || genId('l'),
+    name: l.name || '',
+    company: l.company || '',
+    email: l.email || '',
+    phone: l.phone || '',
+    source: l.source || '',
+    status: l.status || 'new',
+    value: parsedValue,
+    notes: l.notes || '',
+    assigneeId: l.assigneeId || '',
+    assigneeName: l.assigneeName || '',
+    createdAt: l.createdAt || new Date().toISOString(),
+    updatedAt: l.updatedAt || l.createdAt || new Date().toISOString(),
+  };
+}
+
+function normalizeCalendarEvent(e) {
+  return {
+    id: e.id || genId('ev'),
+    title: e.title || '',
+    type: e.type || 'post',
+    description: e.description || '',
+    date: e.date || '',
+    time: e.time || '',
+    platform: e.platform || '',
+    assigneeId: e.assigneeId || '',
+    assigneeName: e.assigneeName || '',
+    projectId: e.projectId || '',
+    projectName: e.projectName || '',
+    clientId: e.clientId || '',
+    clientName: e.clientName || '',
+    createdAt: e.createdAt || new Date().toISOString(),
+    updatedAt: e.updatedAt || e.createdAt || new Date().toISOString(),
+  };
+}
+
+// ─── Leads ────────────────────────────────────────────────────────────────────
+
+function getLeads() {
+  const cached = getCached('leads');
+  if (cached) return cached;
+  const sheet = getSheet(SHEETS.LEADS);
+  const data = sheetToObjects(sheet).map(normalizeLead);
+  setCached('leads', data, 120);
+  return data;
+}
+
+function createLead(l) {
+  const sheet = getSheet(SHEETS.LEADS);
+  const row = [
+    l.id || genId('l'),
+    l.name || '',
+    l.company || '',
+    l.email || '',
+    l.phone || '',
+    l.source || '',
+    l.status || 'new',
+    l.value === undefined || l.value === null ? '' : l.value,
+    l.notes || '',
+    l.assigneeId || '',
+    l.assigneeName || '',
+    l.createdAt || new Date().toISOString(),
+    l.updatedAt || l.createdAt || new Date().toISOString(),
+  ];
+  sheet.appendRow(row);
+  invalidateCache('leads');
+  return normalizeLead(l);
+}
+
+function updateLead(l) {
+  const sheet = getSheet(SHEETS.LEADS);
+  const updated = updateRowById(sheet, l.id, l);
+  invalidateCache('leads');
+  return normalizeLead(updated);
+}
+
+function deleteLead(id) {
+  const sheet = getSheet(SHEETS.LEADS);
+  const row = findRowById(sheet, id);
+  if (row !== -1) sheet.deleteRow(row);
+  invalidateCache('leads');
+}
+
+// ─── Calendar Events ─────────────────────────────────────────────────────────
+
+function getCalendarEvents() {
+  const cached = getCached('calendarEvents');
+  if (cached) return cached;
+  const sheet = getSheet(SHEETS.CALENDAR_EVENTS);
+  const data = sheetToObjects(sheet).map(normalizeCalendarEvent);
+  setCached('calendarEvents', data, 120);
+  return data;
+}
+
+function createCalendarEvent(ev) {
+  const sheet = getSheet(SHEETS.CALENDAR_EVENTS);
+  const row = [
+    ev.id || genId('ev'),
+    ev.title || '',
+    ev.type || 'post',
+    ev.description || '',
+    ev.date || '',
+    ev.time || '',
+    ev.platform || '',
+    ev.assigneeId || '',
+    ev.assigneeName || '',
+    ev.projectId || '',
+    ev.projectName || '',
+    ev.clientId || '',
+    ev.clientName || '',
+    ev.createdAt || new Date().toISOString(),
+    ev.updatedAt || ev.createdAt || new Date().toISOString(),
+  ];
+  sheet.appendRow(row);
+  invalidateCache('calendarEvents');
+  return normalizeCalendarEvent(ev);
+}
+
+function updateCalendarEvent(ev) {
+  const sheet = getSheet(SHEETS.CALENDAR_EVENTS);
+  const updated = updateRowById(sheet, ev.id, ev);
+  invalidateCache('calendarEvents');
+  return normalizeCalendarEvent(updated);
+}
+
+function deleteCalendarEvent(id) {
+  const sheet = getSheet(SHEETS.CALENDAR_EVENTS);
+  const row = findRowById(sheet, id);
+  if (row !== -1) sheet.deleteRow(row);
+  invalidateCache('calendarEvents');
+}
+
+// ─── Approvals (task approval workflow) ──────────────────────────────────────
+
+function deleteApprovalsByTaskId(taskId) {
+  const sheet = getSheet(SHEETS.APPROVALS);
+  const values = sheet.getDataRange().getValues();
+  // Column order: [id, taskId, approverId, approverName, status, remark, createdAt, updatedAt]
+  for (let i = values.length - 1; i >= 1; i--) {
+    if (String(values[i][1]) === String(taskId)) {
+      sheet.deleteRow(i + 1); // 1-indexed
+    }
+  }
+}
+
+function getApprovalsForTask(taskId) {
+  const sheet = getSheet(SHEETS.APPROVALS);
+  const all = sheetToObjects(sheet).map(normalizeApproval);
+  return all.filter(a => String(a.taskId) === String(taskId));
+}
+
+function getTaskWithApprovals(taskId) {
+  const taskSheet = getSheet(SHEETS.TASKS);
+  const tasks = sheetToObjects(taskSheet);
+  const task = tasks.find(t => String(t.id) === String(taskId));
+  if (!task) throw new Error('Task not found: ' + taskId);
+
+  const approvals = getApprovalsForTask(taskId);
+  return {
+    ...task,
+    approvalRequired: approvals.length > 0,
+    approverIds: approvals.map(a => a.approverId),
+    approvals,
+  };
+}
+
+function requestApproval(body) {
+  const taskId = body.taskId;
+  const now = new Date().toISOString();
+
+  const approvalsSheet = getSheet(SHEETS.APPROVALS);
+  const taskSheet = getSheet(SHEETS.TASKS);
+  const tasks = sheetToObjects(taskSheet);
+  const task = tasks.find(t => String(t.id) === String(taskId));
+  if (!task) throw new Error('Task not found: ' + taskId);
+
+  // Replace approvals set for this task.
+  deleteApprovalsByTaskId(taskId);
+
+  const approvalsPayload = Array.isArray(body.approvals) ? body.approvals : [];
+  const approverIds = Array.isArray(body.approverIds) ? body.approverIds : [];
+  const approverNames = Array.isArray(body.approverNames) ? body.approverNames : [];
+
+  const approvalsToStore = approvalsPayload.length > 0
+    ? approvalsPayload
+    : approverIds.map((id, i) => ({
+        id: genId('ap'),
+        taskId,
+        approverId: id,
+        approverName: approverNames[i] || id,
+        status: 'pending',
+        remark: '',
+        createdAt: now,
+      }));
+
+  approvalsToStore.forEach(a => {
+    approvalsSheet.appendRow([
+      a.id || genId('ap'),
+      taskId,
+      a.approverId || '',
+      a.approverName || '',
+      a.status || 'pending',
+      a.remark || '',
+      a.createdAt || now,
+      now,
+    ]);
+  });
+
+  // Keep task status unchanged; only update `updatedAt`.
+  updateRowById(taskSheet, taskId, { updatedAt: now });
+
+  invalidateCache('tasks');
+  if (task.projectId) invalidateCache(`tasks_${task.projectId}`);
+
+  return getTaskWithApprovals(taskId);
+}
+
+function submitApproval(body) {
+  const taskId = body.taskId;
+  const approverId = body.approverId;
+  const status = body.status;
+  const remark = body.remark || '';
+  const now = new Date().toISOString();
+
+  // Update the single approver row (we need approverName for audit comments).
+  const approvalsUpdate = (() => {
+    const sheet = getSheet(SHEETS.APPROVALS);
+    const values = sheet.getDataRange().getValues();
+    for (let i = 1; i < values.length; i++) {
+      // Column order: [id, taskId, approverId, approverName, status, remark, createdAt, updatedAt]
+      if (String(values[i][1]) === String(taskId) && String(values[i][2]) === String(approverId)) {
+        const rowValues = values[i];
+        rowValues[4] = status;
+        rowValues[5] = remark;
+        rowValues[7] = now;
+        sheet.getRange(i + 1, 1, 1, rowValues.length).setValues([rowValues]);
+        return { approverName: rowValues[3] || '' };
+      }
+    }
+    throw new Error('Approval not found for taskId=' + taskId + ', approverId=' + approverId);
+  })();
+
+  // Compute next task status from approval set.
+  const approvals = getApprovalsForTask(taskId);
+  const anyRejected = approvals.some(a => a.status === 'rejected');
+  const allApproved = approvals.length > 0 && approvals.every(a => a.status === 'approved');
+
+  const taskSheet = getSheet(SHEETS.TASKS);
+  const task = sheetToObjects(taskSheet).find(t => String(t.id) === String(taskId));
+  if (!task) throw new Error('Task not found: ' + taskId);
+
+  let newStatus = task.status;
+  if (anyRejected) newStatus = 'todo';
+  else if (allApproved) newStatus = 'done';
+
+  updateRowById(taskSheet, taskId, { status: newStatus, updatedAt: now });
+
+  // If rejected, also add an audit comment (matches mock behavior).
+  if (status === 'rejected' && remark) {
+    const commentsSheet = getSheet(SHEETS.COMMENTS);
+    commentsSheet.appendRow([
+      genId('cm'),
+      taskId,
+      approverId,
+      approvalsUpdate.approverName || '',
+      `❌ Rejected: ${remark}`,
+      now,
+    ]);
+  }
+
+  invalidateCache('tasks');
+  if (task.projectId) invalidateCache(`tasks_${task.projectId}`);
+
+  return getTaskWithApprovals(taskId);
 }

@@ -136,6 +136,13 @@ export function Avatar({ name, src, size = 'md', className }: { name: string; sr
         return `https://drive.google.com/uc?id=${idParamMatch[1]}`;
       }
     }
+    // Handle `lh3.googleusercontent.com/.../d/<FILE_ID>` as well (older uploads).
+    if (src.includes('googleusercontent.com')) {
+      const fileIdMatch = src.match(/\/d\/([^/]+)/);
+      if (fileIdMatch && fileIdMatch[1]) {
+        return `https://drive.google.com/uc?id=${fileIdMatch[1]}`;
+      }
+    }
     return src;
   }, [src]);
 

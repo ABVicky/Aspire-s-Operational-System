@@ -100,6 +100,10 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       const idParamMatch = src.match(/[?&]id=([^&]+)/);
       if (idParamMatch && idParamMatch[1]) return `https://drive.google.com/uc?id=${idParamMatch[1]}`;
     }
+    if (src.includes('googleusercontent.com')) {
+      const fileIdMatch = src.match(/\/d\/([^/]+)/);
+      if (fileIdMatch && fileIdMatch[1]) return `https://drive.google.com/uc?id=${fileIdMatch[1]}`;
+    }
     return src;
   }, [user?.avatar]);
 

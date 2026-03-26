@@ -4,7 +4,7 @@
 
 1. Go to [Google Sheets](https://sheets.google.com) → Create new spreadsheet
 2. Name it **"Aspire OS Database"**
-3. Create these 6 sheets (tabs at the bottom) with **exact names**:
+3. Create these 9 sheets (tabs at the bottom) with **exact names**:
 
 | Sheet | First Row Headers (copy-paste exactly) |
 |---|---|
@@ -14,6 +14,9 @@
 | **Clients** | `id  name  email  phone  company  paymentStatus  createdAt  updatedAt` |
 | **TimeLogs** | `id  taskId  projectId  userId  userName  startTime  endTime  duration  notes  createdAt` |
 | **Comments** | `id  taskId  userId  userName  text  createdAt` |
+| **Leads** | `id  name  company  email  phone  source  status  value  notes  assigneeId  assigneeName  createdAt  updatedAt` |
+| **CalendarEvents** | `id  title  type  description  date  time  platform  assigneeId  assigneeName  projectId  projectName  clientId  clientName  createdAt  updatedAt` |
+| **Approvals** | `id  taskId  approverId  approverName  status  remark  createdAt  updatedAt` |
 
 4. Add your first user to the **Users** sheet:
    ```

@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { Toaster } from 'sonner';
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
+import { CursorTail } from '@/components/layout/CursorTail';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
@@ -25,6 +26,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange
         >
           <AuthProvider>
+            <CursorTail />
             {children}
             <Toaster position="top-right" richColors />
           </AuthProvider>

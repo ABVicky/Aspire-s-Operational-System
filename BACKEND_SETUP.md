@@ -6,13 +6,16 @@ Follow these steps to connect your **Aspire OS** frontend to the **Google Sheets
 
 ### Phase 1: Google Sheets Configuration
 1.  **Create a New Spreadsheet**: Go to [sheets.new](https://sheets.new) and name it **Aspire OS Database**.
-2.  **Create Tabs**: Create exactly **6 tabs** with the following names (case-sensitive):
+2.  **Create Tabs**: Create exactly **9 tabs** with the following names (case-sensitive):
     *   `Users`
     *   `Projects`
     *   `Tasks`
     *   `Clients`
     *   `TimeLogs`
     *   `Comments`
+    *   `Leads`
+    *   `CalendarEvents`
+    *   `Approvals`
 3.  **Add Table Headers**: In the **first row** (Row 1) of each sheet, paste the following headers exactly:
 
 | Sheet Name | Row 1 Headers (A1, B1, C1...) |
@@ -23,6 +26,9 @@ Follow these steps to connect your **Aspire OS** frontend to the **Google Sheets
 | **Clients** | `id`, `name`, `email`, `phone`, `company`, `paymentStatus`, `createdAt`, `updatedAt` |
 | **TimeLogs** | `id`, `taskId`, `projectId`, `userId`, `userName`, `startTime`, `endTime`, `duration`, `notes`, `createdAt` |
 | **Comments** | `id`, `taskId`, `userId`, `userName`, `text`, `createdAt` |
+| **Leads** | `id`, `name`, `company`, `email`, `phone`, `source`, `status`, `value`, `notes`, `assigneeId`, `assigneeName`, `createdAt`, `updatedAt` |
+| **CalendarEvents** | `id`, `title`, `type`, `description`, `date`, `time`, `platform`, `assigneeId`, `assigneeName`, `projectId`, `projectName`, `clientId`, `clientName`, `createdAt`, `updatedAt` |
+| **Approvals** | `id`, `taskId`, `approverId`, `approverName`, `status`, `remark`, `createdAt`, `updatedAt` |
 
 4.  **Add Admin Account**: In the `Users` sheet, add the following to Row 2:
     *   **id**: `u_1`
