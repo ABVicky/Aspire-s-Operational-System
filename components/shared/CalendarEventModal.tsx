@@ -8,8 +8,7 @@ import { Modal } from './Modal';
 import { toast } from 'sonner';
 import { Loader2, Lock, Globe } from 'lucide-react';
 
-/** These types are project-scoped: only the assignee + their manager + admin can see them. */
-const RESTRICTED_TYPES = ['post', 'deadline'];
+// Removed: RESTRICTED_TYPES
 
 interface CalendarEventModalProps {
   isOpen: boolean;
@@ -110,22 +109,12 @@ export function CalendarEventModal({ isOpen, onClose, event, defaultDate, onSucc
           </div>
         </div>
 
-        {/* Visibility notice */}
-        {RESTRICTED_TYPES.includes(formData.type || '') ? (
-          <div className="flex items-start gap-3 px-4 py-3 bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-700/40 rounded-2xl">
-            <Lock className="w-4 h-4 text-purple-500 shrink-0 mt-0.5" />
-            <p className="text-xs font-semibold text-purple-700 dark:text-purple-300 leading-snug">
-              <span className="font-black">Project-only visibility</span> — This event will only be visible to the assigned member, their manager, and admins.
-            </p>
-          </div>
-        ) : (
-          <div className="flex items-start gap-3 px-4 py-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-700/40 rounded-2xl">
-            <Globe className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300 leading-snug">
-              <span className="font-black">Visible to everyone</span> — This event will appear on all team members' calendars.
-            </p>
-          </div>
-        )}
+        <div className="flex items-start gap-3 px-4 py-3 bg-indigo-50 dark:bg-indigo-950/30 border border-indigo-200 dark:border-indigo-700/40 rounded-2xl">
+          <Globe className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
+          <p className="text-xs font-semibold text-indigo-700 dark:text-indigo-300 leading-snug">
+            <span className="font-black">Team Visibility</span> — This event will be visible to all agency members on the content calendar.
+          </p>
+        </div>
 
         <div>
           <label className={labelClass}>Title</label>

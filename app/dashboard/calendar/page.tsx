@@ -11,8 +11,7 @@ import { ChevronLeft, ChevronRight, Plus, Trash2, Camera, FileText, Users, Flag,
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-/** Event types that are restricted to the assigned project's manager + member only. */
-const RESTRICTED_EVENT_TYPES: CalendarEventType[] = ['post', 'deadline'];
+// Removed: RESTRICTED_EVENT_TYPES
 
 const EVENT_CONFIG: Record<CalendarEventType, { color: string; bg: string; dot: string; label: string; icon: any }> = {
   post:     { color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700/40', dot: 'bg-purple-500', label: 'Social Post', icon: FileText },
@@ -50,20 +49,10 @@ export default function CalendarPage() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const canSeeEvent = useCallback((event: CalendarEvent): boolean => {
-    if (!RESTRICTED_EVENT_TYPES.includes(event.type)) return true;
-    if (!currentUser) return false;
-    if (currentUser.role === 'admin') return true;
-    if (event.assigneeId === currentUser.id) return true;
-    const assignee = allUsers.find(u => u.id === event.assigneeId);
-    if (assignee && assignee.managerId === currentUser.id) return true;
-    return false;
-  }, [currentUser, allUsers]);
-
   const filteredEvents = events.filter(e => {
     const matchesFilter = activeFilter === 'all' || e.type === activeFilter;
     const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch && canSeeEvent(e);
+    return matchesFilter && matchesSearch;
   });
 
   const upcomingEvents = filteredEvents
@@ -341,26 +330,6 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* Legend / Access Info */}
-        <div className="p-6 bg-slate-50 dark:bg-slate-950/20 rounded-[2.5rem] border border-slate-200 dark:border-white/5">
-          <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Privacy Guide</h4>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-xl text-indigo-600 dark:text-indigo-400"><Lock className="w-3.5 h-3.5" /></div>
-              <div>
-                <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 leading-none">Restricted</p>
-                <p className="text-[9px] font-medium text-slate-500 mt-1 uppercase tracking-tight">Post & Deadlines (Internal Only)</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-xl text-emerald-600 dark:text-emerald-400"><Globe className="w-3.5 h-3.5" /></div>
-              <div>
-                <p className="text-[10px] font-black text-slate-700 dark:text-slate-300 leading-none">Public</p>
-                <p className="text-[9px] font-medium text-slate-500 mt-1 uppercase tracking-tight">Shoots & Meetings (Visible to all)</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Detail Overlay */}

@@ -38,7 +38,7 @@ export function CursorTail() {
     return Array.from({ length: SEGMENTS }, (_, i) => {
       const t = i / Math.max(1, SEGMENTS - 1);
       const size = 28 - t * 18;
-      const opacity = 0.26 * (1 - t) + 0.05;
+      const opacity = 0.55 * (1 - t) + 0.12;
       const blur = 1 + t * 3.5;
       return { size, opacity, blur, scale: 1 - t * 0.15 };
     });
