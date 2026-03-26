@@ -170,7 +170,7 @@ function initSheet(sheet, name) {
   const headers = {
     [SHEETS.USERS]:     ['id', 'name', 'email', 'password', 'role', 'managerId', 'rating', 'phone', 'department', 'avatar', 'createdAt'],
     [SHEETS.PROJECTS]:  ['id', 'name', 'clientId', 'clientName', 'status', 'startDate', 'dueDate', 'description', 'createdAt', 'updatedAt'],
-    [SHEETS.TASKS]:     ['id', 'projectId', 'projectName', 'title', 'description', 'assigneeId', 'assigneeName', 'status', 'priority', 'dueDate', 'createdAt', 'updatedAt'],
+    [SHEETS.TASKS]:     ['id', 'projectId', 'projectName', 'title', 'description', 'assigneeId', 'assigneeName', 'creatorId', 'creatorName', 'status', 'priority', 'dueDate', 'createdAt', 'updatedAt'],
     [SHEETS.CLIENTS]:   ['id', 'name', 'email', 'phone', 'company', 'paymentStatus', 'createdAt', 'updatedAt'],
     [SHEETS.TIME_LOGS]: ['id', 'taskId', 'projectId', 'userId', 'userName', 'startTime', 'endTime', 'duration', 'notes', 'createdAt'],
     [SHEETS.COMMENTS]:  ['id', 'taskId', 'userId', 'userName', 'text', 'createdAt'],
@@ -179,7 +179,7 @@ function initSheet(sheet, name) {
     ],
     [SHEETS.CALENDAR_EVENTS]: [
       'id', 'title', 'type', 'description', 'date', 'time', 'platform',
-      'assigneeId', 'assigneeName', 'projectId', 'projectName', 'clientId', 'clientName',
+      'assigneeId', 'assigneeName', 'creatorId', 'creatorName', 'projectId', 'projectName', 'clientId', 'clientName',
       'createdAt', 'updatedAt'
     ],
     [SHEETS.APPROVALS]: [
@@ -385,7 +385,7 @@ function getTasks(projectId) {
 
 function createTask(t) {
   const sheet = getSheet(SHEETS.TASKS);
-  const row = [t.id, t.projectId, t.projectName || '', t.title, t.description || '', t.assigneeId || '', t.assigneeName || '', t.status, t.priority, t.dueDate || '', t.createdAt, t.updatedAt];
+  const row = [t.id, t.projectId, t.projectName || '', t.title, t.description || '', t.assigneeId || '', t.assigneeName || '', t.creatorId || '', t.creatorName || '', t.status, t.priority, t.dueDate || '', t.createdAt, t.updatedAt];
   sheet.appendRow(row);
   invalidateCache('tasks'); invalidateCache(`tasks_${t.projectId}`);
   return t;
@@ -613,6 +613,8 @@ function normalizeCalendarEvent(e) {
     platform: e.platform || '',
     assigneeId: e.assigneeId || '',
     assigneeName: e.assigneeName || '',
+    creatorId: e.creatorId || '',
+    creatorName: e.creatorName || '',
     projectId: e.projectId || '',
     projectName: e.projectName || '',
     clientId: e.clientId || '',
@@ -692,6 +694,8 @@ function createCalendarEvent(ev) {
     ev.platform || '',
     ev.assigneeId || '',
     ev.assigneeName || '',
+    ev.creatorId || '',
+    ev.creatorName || '',
     ev.projectId || '',
     ev.projectName || '',
     ev.clientId || '',

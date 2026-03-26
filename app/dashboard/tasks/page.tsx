@@ -31,6 +31,7 @@ function TasksPageInner() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<TaskStatus | 'all'>('all');
   const [filterProject, setFilterProject] = useState(projectFilter);
+  const [filterMine, setFilterMine] = useState(true); // Default to My Tasks
   const [view, setView] = useState<'list' | 'kanban'>('kanban');
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
@@ -79,7 +80,13 @@ function TasksPageInner() {
     try {
       const assignee = users.find(u => u.id === form.assigneeId);
       const project = projects.find(p => p.id === form.projectId);
-      const payload = { ...form, assigneeName: assignee?.name, projectName: project?.name };
+      const payload = { 
+        ...form, 
+        assigneeName: assignee?.name, 
+        projectName: project?.name,
+        // Set creator only on first save
+        ...(!editing && user ? { creatorId: user.id, creatorName: user.name } : {})
+      };
       if (editing) {
         const updated = await updateTask(editing.id, payload);
         setTasks(prev => prev.map(t => t.id === editing.id ? updated : t));
@@ -125,7 +132,8 @@ function TasksPageInner() {
     const matchesSearch = t.title.toLowerCase().includes(q) || (t.projectName || '').toLowerCase().includes(q);
     const matchesStatus = filterStatus === 'all' || t.status === filterStatus;
     const matchesProject = !filterProject || t.projectId === filterProject;
-    return matchesSearch && matchesStatus && matchesProject;
+    const matchesMine = !filterMine || (user && (t.assigneeId === user.id || t.creatorId === user.id));
+    return matchesSearch && matchesStatus && matchesProject && matchesMine;
   });
 
   return (
@@ -156,6 +164,18 @@ function TasksPageInner() {
           <option value="" className="dark:bg-slate-900">All projects</option>
           {projects.map(p => <option key={p.id} value={p.id} className="dark:bg-slate-900">{p.name}</option>)}
         </select>
+
+        <button 
+          onClick={() => setFilterMine(!filterMine)}
+          className={`px-3.5 py-2 rounded-xl text-sm font-medium transition-all ${
+            filterMine 
+              ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-200 dark:shadow-none' 
+              : 'bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400 hover:border-slate-300'
+          }`}
+        >
+          {filterMine ? 'My Tasks' : 'All Tasks'}
+        </button>
+
         <div className="ml-auto flex items-center gap-1 p-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl">
           <button onClick={() => setView('kanban')} className={`p-1.5 rounded-lg transition-colors ${view === 'kanban' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600'}`}><Columns className="w-4 h-4" /></button>
           <button onClick={() => setView('list')} className={`p-1.5 rounded-lg transition-colors ${view === 'list' ? 'bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600'}`}><LayoutList className="w-4 h-4" /></button>

@@ -73,6 +73,8 @@ export interface Task {
   description?: string;
   assigneeId?: string;
   assigneeName?: string;
+  creatorId?: string;
+  creatorName?: string;
   status: TaskStatus;
   priority: Priority;
   dueDate?: string;
@@ -117,6 +119,8 @@ export interface CalendarEvent {
   platform?: SocialPlatform;
   assigneeId?: string;
   assigneeName?: string;
+  creatorId?: string;
+  creatorName?: string;
   projectId?: string;
   projectName?: string;
   clientId?: string;

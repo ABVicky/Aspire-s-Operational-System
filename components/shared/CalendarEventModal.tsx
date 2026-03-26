@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
 import { CalendarEvent, CalendarEventType, SocialPlatform } from '@/lib/types';
 import { getUsers, getClients, getProjects, createCalendarEvent, updateCalendarEvent } from '@/lib/api';
 import { Modal } from './Modal';
@@ -28,6 +29,7 @@ const EVENT_TYPES: { value: CalendarEventType; label: string; color: string }[] 
 const PLATFORMS: SocialPlatform[] = ['Instagram', 'Facebook', 'LinkedIn', 'YouTube', 'Twitter', 'Other'];
 
 export function CalendarEventModal({ isOpen, onClose, event, defaultDate, onSuccess }: CalendarEventModalProps) {
+  const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
@@ -62,6 +64,8 @@ export function CalendarEventModal({ isOpen, onClose, event, defaultDate, onSucc
         assigneeName: assignee?.name,
         projectName: project?.name,
         clientName: client?.name,
+        // Set creator only on creation
+        ...(!isEdit && currentUser ? { creatorId: currentUser.id, creatorName: currentUser.name } : {})
       } as any;
 
       const res = isEdit
