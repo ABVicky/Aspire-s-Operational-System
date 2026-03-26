@@ -32,7 +32,6 @@ async function postAPI<T>(action: string, body: object): Promise<T> {
   
   const res = await fetch(APPS_SCRIPT_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, ...body }),
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);

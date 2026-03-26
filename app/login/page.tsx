@@ -92,7 +92,8 @@ export default function LoginPage() {
         router.push('/dashboard');
       }, 1200); // Wait for collapse animation
     } catch (err: unknown) {
-      toast.error('SECURITY ERROR: ACCESS DENIED');
+      const msg = err instanceof Error ? err.message : 'UNKNOWN SECURITY BREACH';
+      toast.error(`SECURITY ERROR: ${msg.toUpperCase()}`);
       setLoading(false);
     }
   };
