@@ -203,10 +203,14 @@ function initSheet(sheet, name) {
 function sheetToObjects(sheet) {
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
-  const headers = data[0];
+  const rawHeaders = data[0];
+  const headers = rawHeaders.map(h => String(h).trim().toLowerCase());
+  
   return data.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => { obj[h] = row[i] !== undefined ? String(row[i]) : ''; });
+    headers.forEach((h, i) => { 
+      obj[h] = row[i] !== undefined ? String(row[i]) : ''; 
+    });
     return obj;
   });
 }
@@ -226,14 +230,27 @@ function getHeaders(sheet) {
 function updateRowById(sheet, id, updateObj) {
   const rowNum = findRowById(sheet, id);
   if (rowNum === -1) throw new Error('Row not found for id: ' + id);
-  const headers = getHeaders(sheet);
-  const rowRange = sheet.getRange(rowNum, 1, 1, headers.length);
+  
+  const rawHeaders = getHeaders(sheet);
+  const headers = rawHeaders.map(h => String(h).trim().toLowerCase());
+  const rowRange = sheet.getRange(rowNum, 1, 1, rawHeaders.length);
   const rowValues = rowRange.getValues()[0];
+  
   const rowObj = {};
   headers.forEach((h, i) => { rowObj[h] = rowValues[i]; });
-  // Merge update
-  Object.keys(updateObj).forEach(k => { rowObj[k] = updateObj[k]; });
-  rowRange.setValues([headers.map(h => rowObj[h])]);
+  
+  // Merge update (handle keys case-insensitively)
+  const normalizedUpdate = {};
+  Object.keys(updateObj).forEach(k => { normalizedUpdate[k.toLowerCase().trim()] = updateObj[k]; });
+  
+  Object.keys(normalizedUpdate).forEach(k => { 
+    if (headers.indexOf(k) !== -1) {
+      rowObj[k] = normalizedUpdate[k]; 
+    }
+  });
+
+  const finalRow = headers.map(h => rowObj[h]);
+  rowRange.setValues([finalRow]);
   return rowObj;
 }
 
@@ -267,6 +284,7 @@ function getUsers() {
   const users = sheetToObjects(sheet).map(u => ({
     id: u.id, name: u.name, email: u.email, role: u.role, managerId: u.managerId || '', rating: parseFloat(u.rating) || 0, phone: u.phone || '', department: u.department || 'Creative', avatar: u.avatar, createdAt: u.createdAt,
   }));
+  Logger.log('getUsers: Returning ' + users.length + ' users. First user avatar: ' + (users[0] ? users[0].avatar : 'N/A'));
   setCached('users', users, 300);
   return users;
 }
@@ -312,6 +330,7 @@ function uploadAvatar(userId, base64, fileName) {
   updateRowById(sheet, userId, { avatar: fileUrl });
   invalidateCache('users');
   
+  Logger.log('uploadAvatar: Success for user ' + userId + '. URL: ' + fileUrl);
   return { avatar: fileUrl };
 }
 

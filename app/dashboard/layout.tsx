@@ -6,6 +6,7 @@ import { useAuth } from '@/context/AuthContext';
 import { SidebarProvider } from '@/context/SidebarContext';
 import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
+import BottomNav from '@/components/layout/BottomNav';
 import DelayAlertBanner from '@/components/layout/DelayAlertBanner';
 import TransitionPortal from '@/components/layout/TransitionPortal';
 import { Loader2 } from 'lucide-react';
@@ -61,13 +62,14 @@ export default function DashboardLayout({
             className="flex-1 pt-2 md:pt-4 transition-all duration-300 lg:pl-[var(--sidebar-width)]"
             style={{ 
               marginTop: 'var(--topbar-height)',
-              paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))'
+              paddingBottom: 'calc(var(--bottom-nav-height, 0px) + max(1.5rem, env(safe-area-inset-bottom)))'
             }}
           >
             <div className="mx-auto max-w-[1600px] px-4 md:px-8 lg:px-10 py-4 md:py-6">
               {children}
             </div>
           </main>
+          <BottomNav />
         </div>
       </div>
     </SidebarProvider>

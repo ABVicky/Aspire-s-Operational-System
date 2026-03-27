@@ -35,6 +35,7 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
         department: user.department || 'Creative',
       });
       setIsEditing(false);
+      setImgError(false);
     }
   }, [user, isOpen]);
 
@@ -58,6 +59,8 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
       reader.onloadend = async () => {
         const base64 = reader.result as string;
         const result = await uploadAvatar(user.id, base64, file.name);
+        console.log('Avatar upload result:', result);
+        setImgError(false);
         updateSession({ ...user, avatar: result.avatar });
         toast.success('Avatar updated!');
       };
@@ -94,15 +97,11 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
   const processedAvatar = useMemo(() => {
     const src = user?.avatar;
     if (!src) return src;
-    if (src.includes('drive.google.com')) {
-      const fileIdMatch = src.match(/\/d\/([^/]+)/);
-      if (fileIdMatch && fileIdMatch[1]) return `https://drive.google.com/uc?id=${fileIdMatch[1]}`;
-      const idParamMatch = src.match(/[?&]id=([^&]+)/);
-      if (idParamMatch && idParamMatch[1]) return `https://drive.google.com/uc?id=${idParamMatch[1]}`;
-    }
-    if (src.includes('googleusercontent.com')) {
-      const fileIdMatch = src.match(/\/d\/([^/]+)/);
-      if (fileIdMatch && fileIdMatch[1]) return `https://drive.google.com/uc?id=${fileIdMatch[1]}`;
+    if (src.includes('drive.google.com') || src.includes('googleusercontent.com')) {
+      const idMatch = src.match(/\/d\/([^/]+)/) || src.match(/[?&]id=([^&]+)/);
+      if (idMatch && idMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
+      }
     }
     return src;
   }, [user?.avatar]);
@@ -124,8 +123,12 @@ export function ProfileModal({ isOpen, onClose }: ProfileModalProps) {
                   <img 
                     src={processedAvatar} 
                     alt={user?.name || ''} 
+                    referrerPolicy="no-referrer"
                     className="w-full h-full object-cover" 
-                    onError={() => setImgError(true)}
+                    onError={() => {
+                      console.error('Avatar load failed (ProfileModal) for:', processedAvatar);
+                      setImgError(true);
+                    }}
                   />
                 ) : (
                   user?.name ? user.name.charAt(0) : '?'

@@ -151,9 +151,9 @@ function TasksPageInner() {
 
       {/* Filters + View toggle */}
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-slate-400">
+        <div className="flex-1 flex items-center gap-2 px-3.5 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-slate-400">
           <Search className="w-4 h-4 text-slate-400" />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className="bg-transparent outline-none w-40 placeholder-slate-400 dark:text-white" />
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks..." className="bg-transparent outline-none flex-1 placeholder-slate-400 dark:text-white" />
           {search && <button onClick={() => setSearch('')}><X className="w-3.5 h-3.5 text-slate-400" /></button>}
         </div>
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as TaskStatus | 'all')} className="px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-xl text-sm text-slate-600 dark:text-slate-400 outline-none cursor-pointer">

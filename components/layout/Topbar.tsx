@@ -31,12 +31,16 @@ export default function Topbar() {
     >
       <div className="h-full px-4 md:px-8 flex items-center justify-between gap-4">
         {/* Left: Mobile Toggle & Search */}
-        <div className="flex items-center gap-4 flex-1">
+        <div className="flex items-center gap-2 md:gap-4 flex-1">
           <button
             onClick={toggle}
-            className="lg:hidden p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-95 text-slate-600 dark:text-slate-400 border border-transparent hover:border-slate-200 dark:hover:border-white/5"
+            className="lg:hidden p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-95 text-slate-600 dark:text-slate-400"
           >
             <Menu className="w-5 h-5" />
+          </button>
+
+          <button className="md:hidden p-2.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-all active:scale-95 text-slate-400">
+            <Search className="w-5 h-5" />
           </button>
 
           <div className="hidden md:flex items-center gap-3 px-4 py-2 bg-slate-100/50 dark:bg-slate-800/40 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-2xl border border-slate-200/40 dark:border-white/5 transition-all w-full max-w-sm group cursor-text">
@@ -49,8 +53,8 @@ export default function Topbar() {
         </div>
 
         {/* Right: Actions */}
-        <div className="flex items-center gap-2 md:gap-4">
-          <div className="hidden sm:flex items-center gap-1.5">
+        <div className="flex items-center gap-1 md:gap-4">
+          <div className="flex items-center gap-1">
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all"
@@ -61,7 +65,7 @@ export default function Topbar() {
             </button>
             <button 
               onClick={() => setIsProfileModalOpen(true)}
-              className="p-2.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all group"
+              className="hidden sm:flex p-2.5 text-slate-400 dark:text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl transition-all group"
             >
               <Settings className="w-5 h-5 transition-transform group-hover:rotate-90" />
             </button>

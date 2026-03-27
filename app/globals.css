@@ -25,6 +25,7 @@
 :root {
   --sidebar-width: 260px;
   --topbar-height: 64px;
+  --bottom-nav-height: 0px;
   --background: #fbfcfe;
   --foreground: #111827;
 }
@@ -38,6 +39,7 @@
   :root {
     --sidebar-width: 260px;
     --topbar-height: 56px;
+    --bottom-nav-height: 64px;
   }
 }
 

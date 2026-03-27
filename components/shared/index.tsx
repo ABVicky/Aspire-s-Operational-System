@@ -115,7 +115,7 @@ export function TableSkeleton({ rows = 5 }: { rows?: number }) {
   );
 }
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 
 // Avatar
 export function Avatar({ name, src, size = 'md', className }: { name: string; src?: string; size?: 'sm' | 'md' | 'lg'; className?: string }) {
@@ -124,26 +124,17 @@ export function Avatar({ name, src, size = 'md', className }: { name: string; sr
   // Transform Google Drive links to direct direct links
   const processedSrc = useMemo(() => {
     if (!src) return src;
-    if (src.includes('drive.google.com')) {
-      // Handle /file/d/ID/view format
-      const fileIdMatch = src.match(/\/d\/([^/]+)/);
-      if (fileIdMatch && fileIdMatch[1]) {
-        return `https://drive.google.com/uc?id=${fileIdMatch[1]}`;
-      }
-      // Handle ?id=ID format
-      const idParamMatch = src.match(/[?&]id=([^&]+)/);
-      if (idParamMatch && idParamMatch[1]) {
-        return `https://drive.google.com/uc?id=${idParamMatch[1]}`;
-      }
-    }
-    // Handle `lh3.googleusercontent.com/.../d/<FILE_ID>` as well (older uploads).
-    if (src.includes('googleusercontent.com')) {
-      const fileIdMatch = src.match(/\/d\/([^/]+)/);
-      if (fileIdMatch && fileIdMatch[1]) {
-        return `https://drive.google.com/uc?id=${fileIdMatch[1]}`;
+    if (src.includes('drive.google.com') || src.includes('googleusercontent.com')) {
+      const idMatch = src.match(/\/d\/([^/]+)/) || src.match(/[?&]id=([^&]+)/);
+      if (idMatch && idMatch[1]) {
+        return `https://lh3.googleusercontent.com/d/${idMatch[1]}`;
       }
     }
     return src;
+  }, [src]);
+
+  useEffect(() => {
+    setImgError(false);
   }, [src]);
 
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
@@ -164,8 +155,12 @@ export function Avatar({ name, src, size = 'md', className }: { name: string; sr
         <img 
           src={processedSrc} 
           alt={name} 
+          referrerPolicy="no-referrer"
           className="w-full h-full object-cover" 
-          onError={() => setImgError(true)}
+          onError={() => {
+            console.error('Avatar load failed for:', processedSrc);
+            setImgError(true);
+          }}
         />
       ) : (
         initials
@@ -230,7 +225,7 @@ export function StatCard({ title, value, icon, trend, color = 'indigo', href }: 
   );
 
   const containerClass = cn(
-    "bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-white/5 p-6 shadow-sm hover:shadow-hover transition-premium group relative overflow-hidden flex flex-col justify-between",
+    "bg-white dark:bg-slate-900 rounded-2xl md:rounded-[2rem] border border-slate-200 dark:border-white/5 p-4 md:p-6 shadow-sm hover:shadow-hover transition-premium group relative overflow-hidden flex flex-col justify-between",
     href ? "active:scale-[0.98] hover-premium cursor-pointer hover:border-indigo-200 dark:hover:border-indigo-500/30" : "cursor-default"
   );
 

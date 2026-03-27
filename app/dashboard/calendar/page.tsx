@@ -208,7 +208,7 @@ export default function CalendarPage() {
                 className="grid grid-cols-7"
               >
                 {Array.from({ length: firstDay }).map((_, i) => (
-                  <div key={`empty-${i}`} className="min-h-[120px] border-b border-r border-slate-50 dark:border-white/5 bg-slate-50/20 dark:bg-slate-950/10" />
+                  <div key={`empty-${i}`} className="min-h-[100px] md:min-h-[120px] border-b border-r border-slate-50 dark:border-white/5 bg-slate-50/20 dark:bg-slate-950/10" />
                 ))}
 
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => {
@@ -223,7 +223,7 @@ export default function CalendarPage() {
                       onDragOver={onDragOver}
                       onDrop={e => onDrop(e, dateStr)}
                       className={cn(
-                        'min-h-[120px] border-b border-r border-slate-100 dark:border-white/5 p-2.5 cursor-pointer transition-premium group relative',
+                        'min-h-[100px] md:min-h-[120px] border-b border-r border-slate-100 dark:border-white/5 p-2 md:p-2.5 cursor-pointer transition-premium group relative',
                         isToday ? 'bg-indigo-50/30 dark:bg-indigo-950/10' : 'hover:bg-slate-50/80 dark:hover:bg-slate-800/40'
                       )}
                     >
@@ -263,7 +263,7 @@ export default function CalendarPage() {
                 
                 {/* Pad end of month */}
                 {Array.from({ length: (7 - ((firstDay + daysInMonth) % 7)) % 7 }).map((_, i) => (
-                  <div key={`empty-end-${i}`} className="min-h-[120px] border-b border-r border-slate-50 dark:border-white/5 bg-slate-50/20 dark:bg-slate-950/10" />
+                  <div key={`empty-end-${i}`} className="min-h-[100px] md:min-h-[120px] border-b border-r border-slate-50 dark:border-white/5 bg-slate-50/20 dark:bg-slate-950/10" />
                 ))}
               </motion.div>
             </AnimatePresence>
