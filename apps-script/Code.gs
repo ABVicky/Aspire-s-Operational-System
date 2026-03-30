@@ -58,7 +58,7 @@ function doGet(e) {
       case 'getUsers':        return jsonResponse(getUsers());
       case 'getProjects':     return jsonResponse(getProjects());
       case 'getTasks':        return jsonResponse(getTasks(params.projectId, params.userId));
-      case 'getClients':      return jsonResponse(getClients());
+      case 'sync':            return jsonResponse(syncAllSheetHeaders());
       case 'getComments':     return jsonResponse(getComments(params.taskId));
       case 'getTimeLogs':     return jsonResponse(getTimeLogs(params.taskId, params.projectId));
       case 'getLeads':        return jsonResponse(getLeads());
@@ -178,19 +178,17 @@ function initSheet(sheet, name) {
       'id', 'name', 'company', 'email', 'phone', 'source', 'status', 'value', 'notes', 'assigneeId', 'assigneeName', 'createdAt', 'updatedAt'
     ],
     [SHEETS.CALENDAR_EVENTS]: [
-      'id', 'title', 'type', 'description', 'date', 'time', 'platform',
-      'assigneeId', 'assigneeName', 'creatorId', 'creatorName', 'projectId', 'projectName', 'clientId', 'clientName',
-      'createdAt', 'updatedAt'
+      'id', 'title', 'type', 'date', 'assigneeId', 'assigneeName', 'description', 'createdAt', 'updatedAt', 'location', 'platform', 'projectName'
     ],
     [SHEETS.APPROVALS]: [
       'id', 'taskId', 'approverId', 'approverName', 'status', 'remark', 'createdAt', 'updatedAt'
     ],
   };
-  const h = headers[name];
-  if (h) {
-    sheet.appendRow(h);
+  
+  if (headers[name]) {
+    sheet.appendRow(headers[name]);
     // Format Header
-    const range = sheet.getRange(1, 1, 1, h.length);
+    const range = sheet.getRange(1, 1, 1, headers[name].length);
     range.setFontWeight('bold')
          .setBackground('#1e293b') // slate-800
          .setFontColor('#ffffff')
@@ -200,16 +198,81 @@ function initSheet(sheet, name) {
   }
 }
 
+/**
+ * Automatically syncs actual spreadsheet columns with the official definitions in initSheet.
+ * Adds missing columns to the right side of existing columns.
+ */
+function syncAllSheetHeaders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const results = [];
+  
+  Object.values(SHEETS).forEach(name => {
+    let sheet = ss.getSheetByName(name);
+    if (!sheet) return;
+    
+    const existingHeaders = getHeaders(sheet).map(h => String(h).trim().toLowerCase());
+    
+    // Get official headers from a temporary dummy call to get the object
+    // Or just use the logic from initSheet
+    const officialHeaders = getOfficialHeadersFor(name);
+    if (!officialHeaders) return;
+    
+    const added = [];
+    officialHeaders.forEach(h => {
+      if (!existingHeaders.includes(h.toLowerCase())) {
+        sheet.getRange(1, sheet.getLastColumn() + 1).setValue(h)
+             .setFontWeight('bold')
+             .setBackground('#1e293b')
+             .setFontColor('#ffffff')
+             .setHorizontalAlignment('center');
+        added.push(h);
+      }
+    });
+    
+    results.push({ sheet: name, addedCount: added.length, addedColumns: added });
+  });
+  
+  return { success: true, results: results };
+}
+
+function getOfficialHeadersFor(name) {
+  const h = {
+    [SHEETS.USERS]:     ['id', 'name', 'email', 'password', 'role', 'managerId', 'rating', 'phone', 'department', 'avatar', 'createdAt'],
+    [SHEETS.PROJECTS]:  ['id', 'name', 'clientId', 'clientName', 'status', 'startDate', 'dueDate', 'description', 'creatorId', 'creatorName', 'assigneeId', 'assigneeName', 'createdAt', 'updatedAt'],
+    [SHEETS.TASKS]:     ['id', 'projectId', 'projectName', 'title', 'description', 'assigneeId', 'assigneeName', 'creatorId', 'creatorName', 'status', 'priority', 'dueDate', 'checklist', 'createdAt', 'updatedAt'],
+    [SHEETS.CLIENTS]:   ['id', 'name', 'email', 'phone', 'company', 'paymentStatus', 'createdAt', 'updatedAt'],
+    [SHEETS.TIME_LOGS]: ['id', 'taskId', 'projectId', 'userId', 'userName', 'startTime', 'endTime', 'duration', 'notes', 'createdAt'],
+    [SHEETS.COMMENTS]:  ['id', 'taskId', 'userId', 'userName', 'text', 'createdAt'],
+    [SHEETS.LEADS]:     ['id', 'name', 'company', 'email', 'phone', 'source', 'status', 'value', 'notes', 'assigneeId', 'assigneeName', 'createdAt', 'updatedAt'],
+    [SHEETS.CALENDAR_EVENTS]: ['id', 'title', 'type', 'date', 'assigneeId', 'assigneeName', 'description', 'createdAt', 'updatedAt', 'location', 'platform', 'projectName']
+  };
+  return h[name];
+}
+
 function sheetToObjects(sheet) {
   const data = sheet.getDataRange().getValues();
   if (data.length < 2) return [];
+  
+  // Get official headers (CamelCase) for this sheet name
+  const sheetName = sheet.getName();
+  let officialHeaders = getOfficialHeadersFor(sheetName);
+  
+  // fallback if not defined
   const rawHeaders = data[0];
-  const headers = rawHeaders.map(h => String(h).trim().toLowerCase());
+  const keys = officialHeaders || rawHeaders.map(h => String(h).trim());
+  
+  // Create a mapping of sheet header index to official key
+  const headerMap = rawHeaders.map(h => {
+    const normalized = String(h).trim().toLowerCase();
+    return keys.find(k => k.toLowerCase() === normalized) || normalized;
+  });
   
   return data.slice(1).map(row => {
     const obj = {};
-    headers.forEach((h, i) => { 
-      obj[h] = row[i] !== undefined ? String(row[i]) : ''; 
+    headerMap.forEach((key, i) => { 
+      let val = row[i];
+      if (val === undefined || val === null) val = '';
+      obj[key] = val; 
     });
     return obj;
   });
@@ -249,7 +312,12 @@ function updateRowById(sheet, id, updateObj) {
     }
   });
 
-  const finalRow = headers.map(h => rowObj[h]);
+  const finalRow = headers.map(h => {
+    const val = rowObj[h];
+    if (val === undefined || val === null) return '';
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+  });
   rowRange.setValues([finalRow]);
   return rowObj;
 }
@@ -268,7 +336,9 @@ function appendRowMapped(sheet, obj) {
   
   const row = headers.map(h => {
     const val = normalizedObj[h];
-    return val !== undefined && val !== null ? String(val) : '';
+    if (val === undefined || val === null) return '';
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
   });
   
   sheet.appendRow(row);
@@ -407,9 +477,11 @@ function getTasks(projectId, userId) {
   // Apply Privacy Filtering: Unassigned tasks are private to the creator, UNLESS user is Admin.
   if (userId) {
     const user = getUserById(userId);
-    const isAdmin = user && user.role === 'admin';
-    if (!isAdmin) {
+    const isPowerUser = user && (user.role === 'admin' || user.role === 'manager');
+    if (!isPowerUser) {
       data = data.filter(t => {
+        // Privacy Logic: Unassigned tasks are private to the creator.
+        // Assigned tasks are visible to the team (team transparency).
         const isUnassigned = !t.assigneeId;
         const isCreator = String(t.creatorId) === String(userId);
         return !isUnassigned || isCreator; 

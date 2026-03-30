@@ -143,7 +143,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     
     const interval = setInterval(() => {
       fetchAllData(true);
-    }, 30000); // 30s for "Real Data" feel
+    }, 3000); // 3s for "Real-time" feel as requested
 
     const handleFocus = () => {
       // Refresh on tab focus if not already syncing
