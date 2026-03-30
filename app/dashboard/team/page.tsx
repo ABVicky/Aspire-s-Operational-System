@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { User } from '@/lib/types';
-import { getUsers } from '@/lib/api';
+import { useData } from '@/context/DataContext';
 import { Skeleton, Avatar, EmptyState } from '@/components/shared';
 import { Users, Mail, Shield, MoreHorizontal, ChevronRight, Phone, Calendar, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
@@ -14,12 +13,7 @@ const ROLE_COLORS = {
 };
 
 export default function TeamPage() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getUsers().then(setUsers).finally(() => setLoading(false));
-  }, []);
+  const { users, loading } = useData();
 
   return (
     <div className="space-y-6 md:space-y-8">

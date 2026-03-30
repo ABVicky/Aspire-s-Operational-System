@@ -252,3 +252,4 @@ export * from './ClientModal';
 export * from './CalendarEventModal';
 export * from './LeadModal';
 export { default as MentionInput } from './MentionInput';
+export * from './SyncStatus';

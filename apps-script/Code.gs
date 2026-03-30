@@ -57,13 +57,13 @@ function doGet(e) {
     switch (action) {
       case 'getUsers':        return jsonResponse(getUsers());
       case 'getProjects':     return jsonResponse(getProjects());
-      case 'getTasks':        return jsonResponse(getTasks(params.projectId));
+      case 'getTasks':        return jsonResponse(getTasks(params.projectId, params.userId));
       case 'getClients':      return jsonResponse(getClients());
       case 'getComments':     return jsonResponse(getComments(params.taskId));
       case 'getTimeLogs':     return jsonResponse(getTimeLogs(params.taskId, params.projectId));
       case 'getLeads':        return jsonResponse(getLeads());
       case 'getCalendarEvents': return jsonResponse(getCalendarEvents());
-      case 'getDashboardStats': return jsonResponse(getDashboardStats());
+      case 'getDashboardStats': return jsonResponse(getDashboardStats(params.userId));
       case 'setup':          setupDatabase(); return jsonResponse({ success: true, message: 'Database initialized!' });
       default:                return errorResponse('Unknown action: ' + action);
     }
@@ -169,8 +169,8 @@ function getSheet(name) {
 function initSheet(sheet, name) {
   const headers = {
     [SHEETS.USERS]:     ['id', 'name', 'email', 'password', 'role', 'managerId', 'rating', 'phone', 'department', 'avatar', 'createdAt'],
-    [SHEETS.PROJECTS]:  ['id', 'name', 'clientId', 'clientName', 'status', 'startDate', 'dueDate', 'description', 'createdAt', 'updatedAt'],
-    [SHEETS.TASKS]:     ['id', 'projectId', 'projectName', 'title', 'description', 'assigneeId', 'assigneeName', 'creatorId', 'creatorName', 'status', 'priority', 'dueDate', 'createdAt', 'updatedAt'],
+    [SHEETS.PROJECTS]:  ['id', 'name', 'clientId', 'clientName', 'status', 'startDate', 'dueDate', 'description', 'creatorId', 'creatorName', 'assigneeId', 'assigneeName', 'createdAt', 'updatedAt'],
+    [SHEETS.TASKS]:     ['id', 'projectId', 'projectName', 'title', 'description', 'assigneeId', 'assigneeName', 'creatorId', 'creatorName', 'status', 'priority', 'dueDate', 'checklist', 'createdAt', 'updatedAt'],
     [SHEETS.CLIENTS]:   ['id', 'name', 'email', 'phone', 'company', 'paymentStatus', 'createdAt', 'updatedAt'],
     [SHEETS.TIME_LOGS]: ['id', 'taskId', 'projectId', 'userId', 'userName', 'startTime', 'endTime', 'duration', 'notes', 'createdAt'],
     [SHEETS.COMMENTS]:  ['id', 'taskId', 'userId', 'userName', 'text', 'createdAt'],
@@ -254,6 +254,27 @@ function updateRowById(sheet, id, updateObj) {
   return rowObj;
 }
 
+/**
+ * Safer append that matches headers in the sheet.
+ * This prevents data shifting if columns are added/moved.
+ */
+function appendRowMapped(sheet, obj) {
+  const rawHeaders = getHeaders(sheet);
+  const headers = rawHeaders.map(h => String(h).trim().toLowerCase());
+  
+  // Lowercase all keys in obj for matching
+  const normalizedObj = {};
+  Object.keys(obj).forEach(k => { normalizedObj[k.toLowerCase().trim()] = obj[k]; });
+  
+  const row = headers.map(h => {
+    const val = normalizedObj[h];
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+  
+  sheet.appendRow(row);
+  return obj;
+}
+
 // ─── Cache ────────────────────────────────────────────────────────────────────
 
 function getCached(key) {
@@ -296,6 +317,12 @@ function login(email, password) {
   if (!user) throw new Error('No account found with this email address.');
   if (user.password && user.password !== password) throw new Error('Incorrect password.');
   return { id: user.id, name: user.name, email: user.email, role: user.role, managerId: user.managerId || '', rating: parseFloat(user.rating) || 0, phone: user.phone || '', department: user.department || 'Creative', avatar: user.avatar, createdAt: user.createdAt };
+}
+
+function getUserById(id) {
+  const sheet = getSheet(SHEETS.USERS);
+  const users = sheetToObjects(sheet);
+  return users.find(u => String(u.id) === String(id));
 }
 
 function updateUser(u) {
@@ -347,8 +374,7 @@ function getProjects() {
 
 function createProject(p) {
   const sheet = getSheet(SHEETS.PROJECTS);
-  const row = [p.id, p.name, p.clientId, p.clientName || '', p.status, p.startDate || '', p.dueDate || '', p.description || '', p.createdAt, p.updatedAt];
-  sheet.appendRow(row);
+  appendRowMapped(sheet, p);
   invalidateCache('projects');
   return p;
 }
@@ -369,13 +395,27 @@ function deleteProject(id) {
 
 // ─── Tasks ────────────────────────────────────────────────────────────────────
 
-function getTasks(projectId) {
+function getTasks(projectId, userId) {
   const cacheKey = projectId ? `tasks_${projectId}` : 'tasks';
   const cached = getCached(cacheKey);
-  if (cached) return cached;
+  if (cached && !userId) return cached; // Only use cache if no userId filter (Admin visibility needs fresh check)
+
   const sheet = getSheet(SHEETS.TASKS);
   let data = sheetToObjects(sheet);
   if (projectId) data = data.filter(t => t.projectId === projectId);
+
+  // Apply Privacy Filtering: Unassigned tasks are private to the creator, UNLESS user is Admin.
+  if (userId) {
+    const user = getUserById(userId);
+    const isAdmin = user && user.role === 'admin';
+    if (!isAdmin) {
+      data = data.filter(t => {
+        const isUnassigned = !t.assigneeId;
+        const isCreator = String(t.creatorId) === String(userId);
+        return !isUnassigned || isCreator; 
+      });
+    }
+  }
 
   // Attach approval workflow data for UI: `approvalRequired` + `approvals[]`.
   // This is derived from the Approvals sheet (Tasks sheet doesn't store approval details).
@@ -390,45 +430,48 @@ function getTasks(projectId) {
 
   data = data.map(t => {
     const taskApprovals = approvalsByTaskId[String(t.id)] || [];
+    let parsedChecklist = [];
+    try {
+      if (t.checklist) parsedChecklist = JSON.parse(t.checklist);
+    } catch (e) {
+      Logger.log('Error parsing checklist for task ' + t.id + ': ' + e);
+    }
+    
     return {
       ...t,
+      checklist: parsedChecklist,
       approvalRequired: taskApprovals.length > 0,
       approverIds: taskApprovals.map(a => a.approverId),
       approvals: taskApprovals,
     };
   });
 
-  setCached(cacheKey, data, 60);
+  if (!userId) setCached(cacheKey, data, 60);
   return data;
 }
 
 function createTask(t) {
   const sheet = getSheet(SHEETS.TASKS);
-  const row = [t.id, t.projectId, t.projectName || '', t.title, t.description || '', t.assigneeId || '', t.assigneeName || '', t.creatorId || '', t.creatorName || '', t.status, t.priority, t.dueDate || '', t.createdAt, t.updatedAt];
-  sheet.appendRow(row);
+  appendRowMapped(sheet, t);
   invalidateCache('tasks'); invalidateCache(`tasks_${t.projectId}`);
   return t;
 }
 
 function updateTask(t) {
   const sheet = getSheet(SHEETS.TASKS);
-  // Only update fields that changed — preserve existing row data
-  const rowNum = findRowById(sheet, t.id);
-  if (rowNum === -1) throw new Error('Task not found: ' + t.id);
-  const headers = getHeaders(sheet);
-  const rowRange = sheet.getRange(rowNum, 1, 1, headers.length);
-  const rowValues = rowRange.getValues()[0];
-  const existing = {};
-  headers.forEach((h, i) => { existing[h] = rowValues[i]; });
-  // Merge only provided fields
-  const mergedRow = headers.map(h => {
-    if (t[h] !== undefined && t[h] !== null) return t[h];
-    return existing[h];
-  });
-  rowRange.setValues([mergedRow]);
+  
+  // Handle checklist stringification
+  const payload = { ...t };
+  if (payload.checklist && typeof payload.checklist !== 'string') {
+    payload.checklist = JSON.stringify(payload.checklist);
+  }
+
+  // Use robust updateRowById that handles normalization and merging
+  const updated = updateRowById(sheet, payload.id, payload);
+  
   invalidateCache('tasks');
-  if (existing.projectId) invalidateCache(`tasks_${existing.projectId}`);
-  return Object.assign(existing, t);
+  if (updated.projectId) invalidateCache(`tasks_${updated.projectId}`);
+  return updated;
 }
 
 function deleteTask(id) {
@@ -451,7 +494,7 @@ function getClients() {
 
 function createClient(c) {
   const sheet = getSheet(SHEETS.CLIENTS);
-  sheet.appendRow([c.id, c.name, c.email, c.phone || '', c.company || '', c.paymentStatus, c.createdAt, c.updatedAt]);
+  appendRowMapped(sheet, c);
   invalidateCache('clients');
   return c;
 }
@@ -480,7 +523,7 @@ function getComments(taskId) {
 
 function addComment(c) {
   const sheet = getSheet(SHEETS.COMMENTS);
-  sheet.appendRow([c.id, c.taskId, c.userId, c.userName, c.text, c.createdAt]);
+  appendRowMapped(sheet, c);
   return c;
 }
 
@@ -497,17 +540,36 @@ function getTimeLogs(taskId, projectId) {
 
 function logTime(l) {
   const sheet = getSheet(SHEETS.TIME_LOGS);
-  sheet.appendRow([l.id, l.taskId, l.projectId, l.userId, l.userName, l.startTime, l.endTime || '', l.duration || 0, l.notes || '', l.createdAt]);
+  appendRowMapped(sheet, l);
   return l;
 }
 
 // ─── Dashboard Stats ──────────────────────────────────────────────────────────
 
-function getDashboardStats() {
-  const projects = getProjects();
-  const tasks = getTasks();
+function getDashboardStats(requestingUserId) {
+  let projects = getProjects();
+  let tasks = getTasks();
   const timeLogs = getTimeLogs();
   const comments = sheetToObjects(getSheet(SHEETS.COMMENTS));
+
+  // Apply Privacy Filtering for Stats
+  if (requestingUserId) {
+    const rUser = getUserById(requestingUserId);
+    const isAdmin = rUser && rUser.role === 'admin';
+    
+    if (!isAdmin) {
+      projects = projects.filter(p => {
+        const isUnassigned = !p.assigneeId;
+        const isCreator = p.creatorId === requestingUserId;
+        return !isUnassigned || isCreator; 
+      });
+      tasks = tasks.filter(t => {
+        const isUnassigned = !t.assigneeId;
+        const isCreator = t.creatorId === requestingUserId;
+        return !isUnassigned || isCreator;
+      });
+    }
+  }
 
   const tasksByStatus = { 'todo': 0, 'in-progress': 0, 'review': 0, 'done': 0 };
   tasks.forEach(t => { if (tasksByStatus[t.status] !== undefined) tasksByStatus[t.status]++; });
@@ -656,22 +718,7 @@ function getLeads() {
 
 function createLead(l) {
   const sheet = getSheet(SHEETS.LEADS);
-  const row = [
-    l.id || genId('l'),
-    l.name || '',
-    l.company || '',
-    l.email || '',
-    l.phone || '',
-    l.source || '',
-    l.status || 'new',
-    l.value === undefined || l.value === null ? '' : l.value,
-    l.notes || '',
-    l.assigneeId || '',
-    l.assigneeName || '',
-    l.createdAt || new Date().toISOString(),
-    l.updatedAt || l.createdAt || new Date().toISOString(),
-  ];
-  sheet.appendRow(row);
+  appendRowMapped(sheet, l);
   invalidateCache('leads');
   return normalizeLead(l);
 }
@@ -703,26 +750,7 @@ function getCalendarEvents() {
 
 function createCalendarEvent(ev) {
   const sheet = getSheet(SHEETS.CALENDAR_EVENTS);
-  const row = [
-    ev.id || genId('ev'),
-    ev.title || '',
-    ev.type || 'post',
-    ev.description || '',
-    ev.date || '',
-    ev.time || '',
-    ev.platform || '',
-    ev.assigneeId || '',
-    ev.assigneeName || '',
-    ev.creatorId || '',
-    ev.creatorName || '',
-    ev.projectId || '',
-    ev.projectName || '',
-    ev.clientId || '',
-    ev.clientName || '',
-    ev.createdAt || new Date().toISOString(),
-    ev.updatedAt || ev.createdAt || new Date().toISOString(),
-  ];
-  sheet.appendRow(row);
+  appendRowMapped(sheet, ev);
   invalidateCache('calendarEvents');
   return normalizeCalendarEvent(ev);
 }

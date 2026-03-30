@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { Project, Client, ProjectStatus } from '@/lib/types';
-import { getProjects, getClients, createProject, updateProject, deleteProject } from '@/lib/api';
+import { useData } from '@/context/DataContext';
 import { StatusBadge, Skeleton, EmptyState, ProjectModal } from '@/components/shared';
 import { formatDate } from '@/lib/utils';
 import { 
@@ -11,33 +11,31 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
+import { useAuth } from '@/context/AuthContext';
+
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { projects, clients, loading, refreshData } = useData();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+  const [filterMine, setFilterMine] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [p, c] = await Promise.all([getProjects(), getClients()]);
-      setProjects(p);
-      setClients(c);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { loadData(); }, [loadData]);
-
   const filtered = projects.filter(p => {
-    const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase()) || 
-                          p.clientName?.toLowerCase().includes(search.toLowerCase());
+    // Privacy Logic: If a project is unassigned, it is "Private" to the creator, UNLESS user is Admin/Manager.
+    const isUnassigned = !p.assigneeId;
+    const isCreator = user && p.creatorId === user.id;
+    const isPowerUser = user && (user.role === 'admin' || user.role === 'manager');
+    if (isUnassigned && !isCreator && !isPowerUser) return false;
+
+    const q = search.toLowerCase();
+    const matchesSearch = p.name.toLowerCase().includes(q) || 
+                          p.clientName?.toLowerCase().includes(q);
     const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesMine = !filterMine || (user && (p.assigneeId === user.id || p.creatorId === user.id));
+    
+    return matchesSearch && matchesStatus && matchesMine;
   });
 
   return (
@@ -69,6 +67,17 @@ export default function ProjectsPage() {
           />
         </div>
         <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setFilterMine(!filterMine)}
+            className={`px-4 py-2.5 md:py-3 rounded-2xl text-sm font-bold transition-all border shrink-0 ${
+              filterMine 
+                ? 'bg-indigo-600 text-white border-indigo-600 shadow-lg shadow-indigo-600/20' 
+                : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-400'
+            }`}
+          >
+            {filterMine ? 'My Projects' : 'All Projects'}
+          </button>
+          
           <div className="relative flex-1 md:flex-initial">
             <Filter className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
             <select 
@@ -118,7 +127,19 @@ export default function ProjectsPage() {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white leading-tight">{p.name}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1 line-clamp-1">{p.description || 'No description provided.'}</p>
+                          <div className="flex items-center gap-1.5 mt-1">
+                            {p.creatorName && (
+                              <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tight bg-indigo-50 dark:bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-100 dark:border-indigo-500/20">
+                                {p.creatorName}
+                              </span>
+                            )}
+                            {p.assigneeName && (
+                              <span className="text-[10px] font-black text-emerald-600 dark:text-emerald-400 uppercase tracking-tight bg-emerald-50 dark:bg-emerald-500/10 px-1.5 py-0.5 rounded-md border border-emerald-100 dark:border-emerald-500/20">
+                                Lead: {p.assigneeName}
+                              </span>
+                            )}
+                            <p className="text-xs text-slate-400 dark:text-slate-500 line-clamp-1">{p.description || 'No description provided.'}</p>
+                          </div>
                         </div>
                       </div>
                     </td>
@@ -154,7 +175,19 @@ export default function ProjectsPage() {
                     </div>
                     <div>
                       <h3 className="font-bold text-slate-900 dark:text-white text-base">{p.name}</h3>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{p.clientName}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">{p.clientName}</p>
+                        {p.creatorName && (
+                          <span className="text-[9px] font-black text-indigo-500 uppercase tracking-tighter">
+                            • {p.creatorName}
+                          </span>
+                        )}
+                        {p.assigneeName && (
+                          <span className="text-[9px] font-black text-emerald-500 uppercase tracking-tighter">
+                            • Lead: {p.assigneeName}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-300 dark:text-slate-600" />
@@ -177,7 +210,7 @@ export default function ProjectsPage() {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         project={editingProject}
-        onSuccess={() => loadData()}
+        onSuccess={() => refreshData()}
       />
     </div>
   );

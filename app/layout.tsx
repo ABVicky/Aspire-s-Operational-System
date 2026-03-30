@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter, Outfit } from 'next/font/google';
 import './globals.css';
 import { AuthProvider } from '@/context/AuthContext';
+import { DataProvider } from '@/context/DataContext';
 import { Toaster } from 'sonner';
 
 import { ThemeProvider } from '@/components/providers/ThemeProvider';
@@ -26,9 +27,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           disableTransitionOnChange
         >
           <AuthProvider>
-            <CursorTail />
-            {children}
-            <Toaster position="top-right" richColors />
+            <DataProvider>
+              <CursorTail />
+              {children}
+              <Toaster position="top-right" richColors />
+            </DataProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

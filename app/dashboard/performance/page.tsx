@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { User, ActivityItem, Task } from '@/lib/types';
-import { getUsers, getTasks, updateUser } from '@/lib/api';
+import { updateUser } from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
+import { useData } from '@/context/DataContext';
 import { Skeleton, Avatar, EmptyState, MentionInput } from '@/components/shared';
 import HierarchyTree from '@/components/dashboard/HierarchyTree';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,37 +18,37 @@ import { toast } from 'sonner';
 
 export default function PerformancePage() {
   const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
+  const { users, tasks: allTasks, loading: globalLoading, updateLocalUser } = useData();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [userTasks, setUserTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [remark, setRemark] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
   useEffect(() => {
-    getUsers().then(setUsers).finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => {
     if (selectedUser) {
-      setDetailsLoading(true);
-      getTasks().then(tasks => {
-        const filtered = tasks.filter(t => t.assigneeId === selectedUser.id);
-        setUserTasks(filtered);
-      }).finally(() => setDetailsLoading(false));
+      const filtered = allTasks.filter(t => t.assigneeId === selectedUser.id);
+      setUserTasks(filtered);
     }
-  }, [selectedUser]);
+  }, [selectedUser, allTasks]);
 
   const handleUpdateRating = async (newRating: number) => {
     if (!selectedUser) return;
     setIsUpdating(true);
+    const originalUser = { ...selectedUser };
+    
+    // Optimistic Update
+    const updatedUser = { ...selectedUser, rating: newRating };
+    setSelectedUser(updatedUser);
+    updateLocalUser(updatedUser);
+
     try {
       await updateUser({ id: selectedUser.id, rating: newRating });
-      setUsers(users.map(u => u.id === selectedUser.id ? { ...u, rating: newRating } : u));
-      setSelectedUser({ ...selectedUser, rating: newRating });
       toast.success(`Rating updated for ${selectedUser.name}`);
     } catch (err) {
+      // Revert if failed
+      setSelectedUser(originalUser);
+      updateLocalUser(originalUser);
       toast.error('Failed to update rating');
     } finally {
       setIsUpdating(false);
@@ -62,13 +63,13 @@ export default function PerformancePage() {
     setRemark('');
   };
 
-  if (loading) return <div className="p-8"><Skeleton className="h-[600px] rounded-[2.5rem]" /></div>;
+  if (globalLoading) return <div className="p-8"><Skeleton className="h-[600px] rounded-[2.5rem]" /></div>;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 pb-20">
       {/* Left Column: Hierarchy */}
-      <div className="xl:col-span-4 space-y-6">
-        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-white/5 p-6 shadow-premium h-full">
+      <div className="xl:col-span-4 h-full">
+        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-200 dark:border-white/5 p-6 shadow-premium sticky top-24 max-h-[calc(100vh-160px)] overflow-y-auto custom-scrollbar">
           <div className="mb-8">
             <h2 className="text-xl font-black tracking-tight font-display">Organization</h2>
             <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Hierarchical View</p>

@@ -81,8 +81,11 @@ export async function deleteProject(id: string): Promise<void> {
 
 // ─── Tasks ───────────────────────────────────────────────────────────────────
 
-export async function getTasks(projectId?: string): Promise<Task[]> {
-  return callAPI<Task[]>('getTasks', projectId ? { projectId } : {});
+export async function getTasks(projectId?: string, userId?: string): Promise<Task[]> {
+  const params: Record<string, string> = {};
+  if (projectId) params.projectId = projectId;
+  if (userId) params.userId = userId;
+  return callAPI<Task[]>('getTasks', params);
 }
 
 export async function createTask(payload: Omit<Task, 'id' | 'createdAt' | 'updatedAt'>): Promise<Task> {
@@ -147,8 +150,8 @@ export async function logTime(payload: Omit<TimeLog, 'id' | 'createdAt'>): Promi
 
 // ─── Dashboard ───────────────────────────────────────────────────────────────
 
-export async function getDashboardStats(): Promise<DashboardStats> {
-  return callAPI<DashboardStats>('getDashboardStats');
+export async function getDashboardStats(userId?: string): Promise<DashboardStats> {
+  return callAPI<DashboardStats>('getDashboardStats', userId ? { userId } : {});
 }
 
 // ─── Calendar Events ─────────────────────────────────────────────────────────

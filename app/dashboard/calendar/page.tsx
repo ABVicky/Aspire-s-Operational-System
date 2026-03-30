@@ -1,23 +1,23 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { CalendarEvent, CalendarEventType, User } from '@/lib/types';
-import { getCalendarEvents, deleteCalendarEvent, updateCalendarEvent, getUsers } from '@/lib/api';
+import { useEffect, useState, useCallback, useMemo } from 'react';
+import { CalendarEvent, CalendarEventType, User, Task } from '@/lib/types';
+import { deleteCalendarEvent, updateCalendarEvent } from '@/lib/api';
+import { useData } from '@/context/DataContext';
 import { CalendarEventModal } from '@/components/shared/CalendarEventModal';
 import { Avatar } from '@/components/shared';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Plus, Trash2, Camera, FileText, Users, Flag, CalendarDays, Lock, Globe, Search } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Trash2, Camera, FileText, Users, Flag, CalendarDays, Lock, Globe, Search, CheckSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-
-// Removed: RESTRICTED_EVENT_TYPES
 
 const EVENT_CONFIG: Record<CalendarEventType, { color: string; bg: string; dot: string; label: string; icon: any }> = {
   post:     { color: 'text-purple-700 dark:text-purple-300', bg: 'bg-purple-50 dark:bg-purple-900/30 border-purple-200 dark:border-purple-700/40', dot: 'bg-purple-500', label: 'Social Post', icon: FileText },
   shoot:    { color: 'text-amber-700 dark:text-amber-300',   bg: 'bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-700/40',     dot: 'bg-amber-500',  label: 'Shoot',       icon: Camera },
   meeting:  { color: 'text-blue-700 dark:text-blue-300',     bg: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700/40',         dot: 'bg-blue-500',   label: 'Meeting',     icon: Users },
   deadline: { color: 'text-red-700 dark:text-red-300',       bg: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700/40',             dot: 'bg-red-500',    label: 'Deadline',    icon: Flag },
+  task:     { color: 'text-indigo-700 dark:text-indigo-300', bg: 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-200 dark:border-indigo-700/40',     dot: 'bg-indigo-500', label: 'Task',      icon: CheckSquare },
 };
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -25,39 +25,45 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 
 export default function CalendarPage() {
   const { user: currentUser } = useAuth();
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
-  const [allUsers, setAllUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { calendarEvents: events, tasks, users: allUsers, loading, updateLocalEvent, deleteLocalEvent, refreshData } = useData();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   
-  // New States for Filtering & Search
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | CalendarEventType>('all');
   const [direction, setDirection] = useState(0);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [evs, users] = await Promise.all([getCalendarEvents(), getUsers()]);
-      setEvents(evs);
-      setAllUsers(users);
-    } finally { setLoading(false); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
+  const allCalendarData = useMemo(() => {
+    const taskEvents: CalendarEvent[] = (tasks || [])
+      .filter((t: Task) => t.dueDate && t.status !== 'done')
+      .map((t: Task) => ({
+        id: t.id,
+        title: t.title,
+        type: 'task',
+        date: t.dueDate || '',
+        assigneeId: t.assigneeId,
+        assigneeName: t.assigneeName,
+        projectName: t.projectName,
+        description: t.description,
+        createdAt: t.createdAt,
+        updatedAt: t.updatedAt,
+      } as CalendarEvent));
 
-  const filteredEvents = events.filter(e => {
+    return [...events, ...taskEvents];
+  }, [events, tasks]);
+
+  const filteredEvents = allCalendarData.filter((e: CalendarEvent) => {
     const matchesFilter = activeFilter === 'all' || e.type === activeFilter;
     const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesFilter && matchesSearch;
   });
 
   const upcomingEvents = filteredEvents
-    .filter(e => new Date(e.date) >= new Date(new Date().setHours(0,0,0,0)))
-    .sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .filter((e: CalendarEvent) => new Date(e.date) >= new Date(new Date().setHours(0,0,0,0)))
+    .sort((a: CalendarEvent, b: CalendarEvent) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .slice(0, 5);
 
   const year = currentDate.getFullYear();
@@ -73,7 +79,7 @@ export default function CalendarPage() {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this event?')) return;
-    try { await deleteCalendarEvent(id); toast.success('Event deleted'); load(); } catch { toast.error('Failed to delete'); }
+    try { await deleteCalendarEvent(id); toast.success('Event deleted'); refreshData(); } catch { toast.error('Failed to delete'); }
   };
 
   const handleDragUpdate = async (eventId: string, newDate: string) => {
@@ -81,14 +87,14 @@ export default function CalendarPage() {
     if (!event || event.date === newDate) return;
 
     // Optimistic update
-    setEvents(prev => prev.map(e => e.id === eventId ? { ...e, date: newDate } : e));
+    updateLocalEvent({ ...event, date: newDate });
     
     try {
       await updateCalendarEvent(eventId, { ...event, date: newDate });
       toast.success(`Rescheduled to ${newDate}`);
     } catch {
       toast.error('Failed to reschedule');
-      load(); // Rollback
+      refreshData(); // Rollback
     }
   };
 
@@ -428,7 +434,7 @@ export default function CalendarPage() {
         onClose={() => { setIsModalOpen(false); setEditingEvent(null); }}
         event={editingEvent}
         defaultDate={selectedDate || today}
-        onSuccess={load}
+        onSuccess={refreshData}
       />
     </div>
   );

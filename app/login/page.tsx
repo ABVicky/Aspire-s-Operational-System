@@ -20,60 +20,18 @@ export default function LoginPage() {
   // ... (rest of states)
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [isBooting, setIsBooting] = useState(true);
+  const [isBooting, setIsBooting] = useState(false);
   const [bootStep, setBootStep] = useState(0);
   const [isEntering, setIsEntering] = useState(false);
-  const [systemStats, setSystemStats] = useState({
-    cpu: 'X12',
-    ram: '65536KB',
-    res: '640x480',
-    net: 'SECURE-COMM-7'
-  });
-
-  // Gather Real-Time System Telemetry
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const cores = navigator.hardwareConcurrency || 8;
-      const mem = (navigator as any).deviceMemory || 16;
-      const width = window.screen.width;
-      const height = window.screen.height;
-      const connection = (navigator as any).connection?.effectiveType || 'FIBER';
-
-      setSystemStats({
-        cpu: `${cores}X CORE-SYNC`,
-        ram: `${mem}GB OK`,
-        res: `${width}x${height}`,
-        net: `${connection.toUpperCase()}-STABLE`
-      });
-    }
-  }, []);
-
-  const bootSequence = useMemo(() => [
-    { text: "ASPIRE-OS(R) BIOS V4.0.28 (C) 1994 DIGITAL MEDIA", delay: 600 },
-    { text: `CPU: ${systemStats.cpu} @ 4.2GHZ`, delay: 400 },
-    { text: `MEMORY TEST: ${systemStats.ram}`, delay: 800 },
-    { text: `VIDEO: ${systemStats.res} HIGH-COLOR`, delay: 500 },
-    { text: `NETWORK: ${systemStats.net} ESTABLISHED`, delay: 400 },
-    { text: "SEARCHING FOR AGENT CREDENTIALS...", delay: 600 },
-    { text: "READY.", delay: 300 },
-  ], [systemStats]);
+  
+  // ... (systemStats remains for logo/UI but no delay)
 
   useEffect(() => {
-    // Reset transition state for the dashboard upon reaching login
+    // Ensure transition flag is always clean
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('dashboard_transition_complete');
     }
-
-    if (bootStep < bootSequence.length) {
-      const timer = setTimeout(() => {
-        setBootStep(prev => prev + 1);
-      }, bootSequence[bootStep].delay);
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => setIsBooting(false), 800);
-      return () => clearTimeout(timer);
-    }
-  }, [bootStep, bootSequence]);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,12 +43,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const user = await apiLogin(email.trim(), password);
-      // Trigger "Cool Entrance" Animation
-      setIsEntering(true);
-      setTimeout(() => {
-        login(user);
-        router.push('/dashboard');
-      }, 1200); // Wait for collapse animation
+      // Login and redirect INSTANTLY
+      login(user);
+      router.push('/dashboard');
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'UNKNOWN SECURITY BREACH';
       toast.error(`SECURITY ERROR: ${msg.toUpperCase()}`);
@@ -135,43 +90,16 @@ export default function LoginPage() {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {isBooting ? (
-          <motion.div 
-            key="bootup"
-            exit={{ opacity: 0, filter: "brightness(2)" }}
-            className="z-10 w-full max-w-xl p-8"
-          >
-            <div className="space-y-1">
-              {bootSequence.slice(0, bootStep).map((item: any, i: number) => (
-                <motion.p 
-                  key={i}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-[#ff1f8b] text-sm md:text-base font-bold tracking-widest leading-relaxed uppercase"
-                >
-                  {item.text}
-                </motion.p>
-              ))}
-              {bootStep < bootSequence.length && (
-                <motion.span 
-                  animate={{ opacity: [1, 0] }}
-                  transition={{ repeat: Infinity, duration: 0.4 }}
-                  className="inline-block w-2.5 h-6 bg-[#ff1f8b] align-middle ml-1"
-                />
-              )}
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div 
-            key="login-terminal"
-            drag={typeof window !== 'undefined' && window.innerWidth > 768}
-            dragConstraints={constraintsRef as any}
-            dragElastic={0.05}
-            dragMomentum={false}
-            initial={{ opacity: 0, scale: 1.05 }}
-            animate={{ opacity: isEntering ? 0 : 1, scale: isEntering ? 0.95 : 1 }}
-            className="relative z-10 w-full max-w-lg cursor-grab active:cursor-grabbing sm:p-0 p-4"
-          >
+        <motion.div 
+          key="login-terminal"
+          drag={typeof window !== 'undefined' && window.innerWidth > 768}
+          dragConstraints={constraintsRef as any}
+          dragElastic={0.05}
+          dragMomentum={false}
+          initial={{ opacity: 0, scale: 1.05 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative z-10 w-full max-w-lg cursor-grab active:cursor-grabbing sm:p-0 p-4"
+        >
             <div className="bg-black border-2 border-[#ff1f8b] p-10 md:p-14 shadow-[0_0_80px_rgba(255,31,139,0.25)] rounded-lg relative overflow-hidden group">
               {/* Screen Distortion Glow */}
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,31,139,0.1)_0%,transparent_100%)] pointer-events-none" />
@@ -273,7 +201,6 @@ export default function LoginPage() {
               (C) DIGITAL ASPIRE CORP. MCMLXXIV
             </p>
           </motion.div>
-        )}
       </AnimatePresence>
 
       <style jsx global>{`

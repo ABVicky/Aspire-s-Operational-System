@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useSidebar } from '@/context/SidebarContext';
 import { cn } from '@/lib/utils';
 import { Search, Settings, Command, Menu, ChevronDown, User, LogOut, Sun, Moon } from 'lucide-react';
-import { Avatar, ProfileModal, LogoutModal } from '@/components/shared';
+import { Avatar, ProfileModal, LogoutModal, SyncStatus } from '@/components/shared';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import { useEffect } from 'react';
@@ -54,6 +54,9 @@ export default function Topbar() {
 
         {/* Right: Actions */}
         <div className="flex items-center gap-1 md:gap-4">
+          <div className="hidden lg:block">
+            <SyncStatus />
+          </div>
           <div className="flex items-center gap-1">
             <button
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}

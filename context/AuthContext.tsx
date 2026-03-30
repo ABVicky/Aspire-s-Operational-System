@@ -50,6 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem(SESSION_KEY);
+    // Clear the "fucking fast" cache to prevent data leakage between users
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('as-')) localStorage.removeItem(key);
+    });
     setSession(null);
   };
 

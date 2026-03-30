@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Task, User, Comment, TimeLog, TaskStatus, Priority, Approval } from '@/lib/types';
+import { Task, User, Comment, TimeLog, TaskStatus, Priority, Approval, ChecklistItem } from '@/lib/types';
 import { getComments, addComment, getTimeLogs, logTime, updateTask, requestApproval, submitApproval } from '@/lib/api';
-import { formatDate, formatRelativeTime, formatDuration } from '@/lib/utils';
+import { formatDate, formatRelativeTime, formatDuration, generateId } from '@/lib/utils';
 import { StatusBadge, PriorityBadge, Avatar, Skeleton, MentionInput } from '@/components/shared';
-import { X, MessageSquare, Clock, Send, Play, Square, Loader2, ChevronDown, Calendar, User as UserIcon, Link, CheckCircle2, XCircle, ShieldCheck } from 'lucide-react';
+import { X, MessageSquare, Clock, Send, Play, Square, Loader2, ChevronDown, Calendar, User as UserIcon, Link, CheckCircle2, XCircle, ShieldCheck, CheckSquare, Plus as PlusIcon, Trash } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -42,6 +42,8 @@ export default function TaskDetailsPanel({ task, users, onClose, onTaskUpdate }:
   const [rejectingFor, setRejectingFor] = useState<string | null>(null);
   const [approvalLoading, setApprovalLoading] = useState(false);
   const [localTask, setLocalTask] = useState<Task>(task);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>(task.checklist || []);
+  const [newItemText, setNewItemText] = useState('');
 
   // Load comments
   const loadComments = useCallback(async () => {
@@ -159,6 +161,37 @@ export default function TaskDetailsPanel({ task, users, onClose, onTaskUpdate }:
     } catch (err: any) { toast.error(err.message); } finally { setApprovalLoading(false); }
   };
 
+  const syncChecklist = async (newChecklist: ChecklistItem[]) => {
+    setChecklist(newChecklist);
+    const updated = { ...localTask, checklist: newChecklist };
+    setLocalTask(updated);
+    onTaskUpdate(updated);
+    try {
+      await updateTask(localTask.id, { checklist: newChecklist });
+    } catch {
+      toast.error('Failed to sync checklist');
+    }
+  };
+
+  const handleAddChecklistItem = () => {
+    if (!newItemText.trim()) return;
+    const newItem = { id: generateId(), text: newItemText.trim(), done: false };
+    syncChecklist([...checklist, newItem]);
+    setNewItemText('');
+  };
+
+  const toggleChecklistItem = (id: string) => {
+    const newChecklist = checklist.map(item => 
+      item.id === id ? { ...item, done: !item.done } : item
+    );
+    syncChecklist(newChecklist);
+  };
+
+  const deleteChecklistItem = (id: string) => {
+    const newChecklist = checklist.filter(item => item.id !== id);
+    syncChecklist(newChecklist);
+  };
+
   const totalTaskTime = timeLogs.reduce((a, l) => a + (l.duration || 0), 0);
 
   return (
@@ -217,6 +250,59 @@ export default function TaskDetailsPanel({ task, users, onClose, onTaskUpdate }:
                 </div>
               </div>
 
+              {/* Checklist */}
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="block text-[10px] md:text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest">Checklist</label>
+                  {checklist.length > 0 && (
+                    <span className="text-[10px] font-bold text-indigo-600 dark:text-indigo-400">
+                      {checklist.filter(i => i.done).length}/{checklist.length} Complete
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {checklist.map(item => (
+                    <div key={item.id} className="flex items-center gap-3 group">
+                      <button 
+                        onClick={() => toggleChecklistItem(item.id)}
+                        className={cn(
+                          "flex-shrink-0 w-5 h-5 rounded-lg border flex items-center justify-center transition-colors",
+                          item.done ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-300 dark:border-white/10 hover:border-indigo-400"
+                        )}
+                      >
+                        {item.done && <CheckSquare className="w-3.5 h-3.5" />}
+                      </button>
+                      <span className={cn(
+                        "text-sm font-medium transition-all flex-1",
+                        item.done ? "text-slate-400 line-through" : "text-slate-700 dark:text-slate-300"
+                      )}>
+                        {item.text}
+                      </span>
+                      <button 
+                        onClick={() => deleteChecklistItem(item.id)}
+                        className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-all"
+                      >
+                        <Trash className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                  <div className="flex items-center gap-3 mt-4">
+                    <div className="w-5 h-5 flex items-center justify-center text-slate-300">
+                      <PlusIcon className="w-4 h-4" />
+                    </div>
+                    <input 
+                      type="text" 
+                      placeholder="Add an item..." 
+                      value={newItemText}
+                      onChange={e => setNewItemText(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleAddChecklistItem()}
+                      onBlur={handleAddChecklistItem}
+                      className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-slate-700 dark:text-slate-300 placeholder:text-slate-300 dark:placeholder:text-slate-700"
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Meta Grid - Responsive */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pb-6">
                 <div>
@@ -256,6 +342,21 @@ export default function TaskDetailsPanel({ task, users, onClose, onTaskUpdate }:
                   <div className="flex items-center gap-3 h-12 px-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-white/5">
                     <Calendar className="w-4 h-4 text-indigo-400" />
                     <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{formatDate(task.dueDate)}</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2.5">Created By</label>
+                  <div className="flex items-center gap-3 h-12 px-4 bg-slate-50 dark:bg-slate-950/40 rounded-2xl border border-slate-100 dark:border-white/5">
+                    {task.creatorName ? (
+                      <>
+                        <Avatar 
+                          name={task.creatorName} 
+                          src={users.find(u => u.id === task.creatorId)?.avatar} 
+                          size="sm" 
+                        />
+                        <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{task.creatorName}</span>
+                      </>
+                    ) : <span className="text-sm font-bold text-slate-300 dark:text-slate-600 italic">System</span>}
                   </div>
                 </div>
               </div>

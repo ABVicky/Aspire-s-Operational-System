@@ -8,7 +8,6 @@ import Sidebar from '@/components/layout/Sidebar';
 import Topbar from '@/components/layout/Topbar';
 import BottomNav from '@/components/layout/BottomNav';
 import DelayAlertBanner from '@/components/layout/DelayAlertBanner';
-import TransitionPortal from '@/components/layout/TransitionPortal';
 import { Loader2 } from 'lucide-react';
 
 export default function DashboardLayout({
@@ -19,16 +18,9 @@ export default function DashboardLayout({
   const { user, isLoading } = useAuth();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
-  const [showTransition, setShowTransition] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    // Check if transition should show (e.g. first time after login)
-    const hasSeenTransition = sessionStorage.getItem('dashboard_transition_complete');
-    if (!hasSeenTransition) {
-      setShowTransition(true);
-      sessionStorage.setItem('dashboard_transition_complete', 'true');
-    }
   }, []);
 
   useEffect(() => {
@@ -52,7 +44,6 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      {showTransition && <TransitionPortal />}
       <div className="flex min-h-screen bg-[#f8f9fc] dark:bg-slate-950 transition-colors duration-500">
         <Sidebar aria-label="Sidebar navigation" />
         <div className="flex flex-col flex-1 w-full min-w-0 transition-all duration-300">

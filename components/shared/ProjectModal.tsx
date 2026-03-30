@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Project, Client, ProjectStatus } from '@/lib/types';
-import { getClients, createProject, updateProject } from '@/lib/api';
+import { createProject, updateProject } from '@/lib/api';
+import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 import { Modal } from './Modal';
 import { toast } from 'sonner';
 import { Loader2, Calendar, Briefcase, User, Info, Target } from 'lucide-react';
@@ -11,13 +13,14 @@ import { cn } from '@/lib/utils';
 interface ProjectModalProps {
   isOpen: boolean;
   onClose: () => void;
-  project?: Project | null; // If provided, we're in edit mode
+  project?: Project | null;
   onSuccess: (project: Project) => void;
 }
 
 export function ProjectModal({ isOpen, onClose, project, onSuccess }: ProjectModalProps) {
+  const { user: currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
-  const [clients, setClients] = useState<Client[]>([]);
+  const { clients, addLocalProject, updateLocalProject } = useData();
   const [formData, setFormData] = useState<Partial<Project>>({
     name: '',
     clientId: '',
@@ -31,11 +34,6 @@ export function ProjectModal({ isOpen, onClose, project, onSuccess }: ProjectMod
 
   useEffect(() => {
     if (isOpen) {
-      getClients().then(setClients).catch(err => {
-        console.error(err);
-        toast.error('Failed to load clients');
-      });
-      
       if (project) {
         setFormData(project);
       } else {
@@ -64,14 +62,20 @@ export function ProjectModal({ isOpen, onClose, project, onSuccess }: ProjectMod
       const payload = {
         ...formData,
         clientName: client?.name || '',
+        ...(!isEdit && currentUser ? { creatorId: currentUser.id, creatorName: currentUser.name } : {}),
       } as any;
 
-      const res = isEdit 
-        ? await updateProject(project!.id, payload)
-        : await createProject(payload);
-
-      toast.success(isEdit ? 'Project updated successfully' : 'Project created successfully');
-      onSuccess(res);
+      if (isEdit) {
+        const res = await updateProject(project!.id, payload);
+        updateLocalProject(res);
+        toast.success('Project updated successfully');
+        onSuccess(res);
+      } else {
+        const res = await createProject(payload);
+        addLocalProject(res);
+        toast.success('Project created successfully');
+        onSuccess(res);
+      }
       onClose();
     } catch (err: any) {
       console.error(err);
@@ -80,6 +84,8 @@ export function ProjectModal({ isOpen, onClose, project, onSuccess }: ProjectMod
       setLoading(false);
     }
   };
+
+  const { users } = useData();
 
   const inputClass = "w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all placeholder:text-slate-400";
   const labelClass = "flex items-center gap-2 text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 ml-1";
@@ -113,6 +119,24 @@ export function ProjectModal({ isOpen, onClose, project, onSuccess }: ProjectMod
               <option value="">Select a client...</option>
               {clients.map(c => (
                 <option key={c.id} value={c.id}>{c.name} ({c.company})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Assignee / Project Lead */}
+          <div>
+            <label className={labelClass}><User className="w-3 h-3" /> Project Lead</label>
+            <select
+              className={inputClass}
+              value={formData.assigneeId || ''}
+              onChange={e => {
+                const u = users.find(user => user.id === e.target.value);
+                setFormData({ ...formData, assigneeId: e.target.value, assigneeName: u?.name || '' });
+              }}
+            >
+              <option value="">Unassigned (Private Draft)</option>
+              {users.map(u => (
+                <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
           </div>

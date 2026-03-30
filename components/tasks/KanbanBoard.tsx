@@ -124,17 +124,27 @@ export default function KanbanBoard({ tasks, users, onStatusChange, onTaskClick,
 
                             {/* Footer */}
                             <div className="flex items-center justify-between mt-1 pt-3 border-t border-slate-50/50 dark:border-white/5">
-                              <div className="flex items-center gap-2">
-                                {task.assigneeName && (
-                                  <Avatar 
-                                    name={task.assigneeName} 
-                                    src={users.find(u => u.id === task.assigneeId)?.avatar}
-                                    size="sm" 
-                                  />
+                              <div className="flex flex-col gap-1.5">
+                                <div className="flex items-center gap-2">
+                                  {task.assigneeName && (
+                                    <Avatar 
+                                      name={task.assigneeName} 
+                                      src={users.find(u => u.id === task.assigneeId)?.avatar}
+                                      size="sm" 
+                                    />
+                                  )}
+                                  <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 truncate max-w-[80px]">
+                                    {task.assigneeName?.split(' ')[0] || 'Unassigned'}
+                                  </span>
+                                </div>
+                                {task.creatorName && (
+                                  <div className="flex items-center gap-1 ml-0.5">
+                                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-600 uppercase tracking-widest leading-none">Creator</span>
+                                    <span className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-tight leading-none">
+                                      {task.creatorName.split(' ')[0]}
+                                    </span>
+                                  </div>
                                 )}
-                                <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 truncate max-w-[80px]">
-                                  {task.assigneeName?.split(' ')[0] || 'Unassigned'}
-                                </span>
                               </div>
                               {task.dueDate && (
                                 <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500">

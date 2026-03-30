@@ -1,14 +1,9 @@
 'use client';
 
-import { useAuth } from '@/context/AuthContext';
 import { IndividualAnalytics } from '@/components/analytics/IndividualAnalytics';
-import { useEffect, useState, useMemo } from 'react';
-import { 
-  getTasks, getProjects, getClients, getLeads, getUsers 
-} from '@/lib/api';
-import { 
-  Task, Project, Client, Lead, User 
-} from '@/lib/types';
+import { useState, useMemo } from 'react';
+import { useData } from '@/context/DataContext';
+import { useAuth } from '@/context/AuthContext';
 import { 
   Target, TrendingUp, IndianRupee, AlertCircle, 
   Search, Filter, Download, Briefcase, Users, LayoutDashboard,
@@ -47,43 +42,22 @@ function seeded01(seed: string) {
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const { tasks, projects, clients, leads, users, loading } = useData();
   const [memberSearch, setMemberSearch] = useState('');
-  const [data, setData] = useState<{
-    tasks: Task[];
-    projects: Project[];
-    clients: Client[];
-    leads: Lead[];
-    users: User[];
-  }>({ tasks: [], projects: [], clients: [], leads: [], users: [] });
 
   const isAdmin = user?.role === 'admin';
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [tasks, projects, clients, leads, users] = await Promise.all([
-          getTasks(), getProjects(), getClients(), getLeads(), getUsers()
-        ]);
-        setData({ tasks, projects, clients, leads, users });
-      } finally { setLoading(false); }
-    }
-    loadData();
-  }, [isAdmin]);
 
   const now = new Date();
 
   // --- Admin Stats ---
   const metrics = useMemo(() => {
-    const doneTasks = data.tasks.filter(t => t.status === 'done');
+    const doneTasks = tasks.filter(t => t.status === 'done');
     const onTimeRate = doneTasks.length > 0 ? Math.round((doneTasks.filter(t => t.dueDate && new Date(t.updatedAt) <= new Date(t.dueDate)).length / doneTasks.length) * 100) : 0;
-    const totalPipeline = data.leads.reduce((sum, l) => sum + (l.value || 0), 0);
-    const overdueCount = data.tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < now).length;
+    const totalPipeline = leads.reduce((sum, l) => sum + (l.value || 0), 0);
+    const overdueCount = tasks.filter(t => t.status !== 'done' && t.dueDate && new Date(t.dueDate) < now).length;
 
-    return { onTimeRate, totalPipeline, overdueCount, activeProjects: data.projects.filter(p => p.status === 'active').length };
-  }, [data]);
+    return { onTimeRate, totalPipeline, overdueCount, activeProjects: projects.filter(p => p.status === 'active').length };
+  }, [tasks, leads, projects, now]);
 
   // If not admin, show individual analytics
   if (user && !isAdmin) {
@@ -103,7 +77,7 @@ export default function AnalyticsPage() {
             </div>
             <h1 className="text-4xl font-black tracking-tighter font-display text-slate-900 dark:text-white">Agency Intelligence</h1>
           </div>
-          <p className="text-slate-500 font-medium max-w-xl text-sm leading-relaxed">Global performance profiling and operational health analysis for all {data.users.length} members.</p>
+          <p className="text-slate-500 font-medium max-w-xl text-sm leading-relaxed">Global performance profiling and operational health analysis for all {users.length} members.</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <button className="flex items-center gap-2 px-6 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 rounded-2xl text-[10px] font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300 transition-premium hover:bg-slate-100">
@@ -154,10 +128,10 @@ export default function AnalyticsPage() {
                   <td colSpan={4} className="px-8 py-12"><TableSkeleton rows={6} /></td>
                 </tr>
               ) : (
-                data.users
+                users
                   .filter(u => u.role === 'member' && (u.name.toLowerCase().includes(memberSearch.toLowerCase()) || u.department?.toLowerCase().includes(memberSearch.toLowerCase())))
                   .map(m => {
-                    const tasks = data.tasks.filter(t => t.assigneeId === m.id);
+                    const memberTasks = tasks.filter(t => t.assigneeId === m.id);
                     // Deterministic score to avoid server/client hydration mismatches.
                     const score = 75 + seeded01(m.id) * 20;
                     return (
@@ -173,8 +147,8 @@ export default function AnalyticsPage() {
                         </td>
                         <td className="px-8 py-6">
                           <div className="flex flex-col">
-                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{tasks.length} active</span>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase">{tasks.filter(t => t.status === 'done').length} completed</span>
+                            <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{memberTasks.length} active</span>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">{memberTasks.filter(t => t.status === 'done').length} completed</span>
                           </div>
                         </td>
                         <td className="px-8 py-6">

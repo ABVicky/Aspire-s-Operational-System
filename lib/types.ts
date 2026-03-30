@@ -5,7 +5,7 @@ export type Priority = 'low' | 'medium' | 'high' | 'urgent';
 export type PaymentStatus = 'pending' | 'partial' | 'paid' | 'overdue';
 
 // Calendar
-export type CalendarEventType = 'post' | 'shoot' | 'meeting' | 'deadline';
+export type CalendarEventType = 'post' | 'shoot' | 'meeting' | 'deadline' | 'task';
 export type SocialPlatform = 'Instagram' | 'Facebook' | 'LinkedIn' | 'YouTube' | 'Twitter' | 'Other';
 
 // Lead CRM
@@ -51,6 +51,10 @@ export interface Project {
   startDate?: string;
   dueDate?: string;
   description?: string;
+  creatorId?: string;
+  creatorName?: string;
+  assigneeId?: string;
+  assigneeName?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,6 +67,12 @@ export interface Approval {
   status: ApprovalStatus;
   remark?: string;
   createdAt: string;
+}
+
+export interface ChecklistItem {
+  id: string;
+  text: string;
+  done: boolean;
 }
 
 export interface Task {
@@ -78,6 +88,7 @@ export interface Task {
   status: TaskStatus;
   priority: Priority;
   dueDate?: string;
+  checklist?: ChecklistItem[];
   // Approval workflow
   approvalRequired?: boolean;
   approverIds?: string[];

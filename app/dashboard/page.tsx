@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { getDashboardStats, getUsers } from '@/lib/api';
-import { DashboardStats, User } from '@/lib/types';
+import { useState, useMemo } from 'react';
+import { useData } from '@/context/DataContext';
 import { StatCard, Skeleton, Avatar, ProjectModal, ChartSkeleton, TableSkeleton } from '@/components/shared';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/context/AuthContext';
@@ -35,31 +34,9 @@ ChartJS.register(
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { stats, users, loading, refreshData } = useData();
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
   const [timeRange, setTimeRange] = useState<'7D' | '30D'>('7D');
-
-  const loadData = async () => {
-    setLoading(true);
-    try {
-      const [statsData, usersData] = await Promise.all([
-        getDashboardStats(),
-        getUsers()
-      ]);
-      setStats(statsData);
-      setUsers(usersData);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadData();
-  }, []);
 
   const memoizedLineData = useMemo(() => ({
     labels: stats?.timeLoggedByDay.slice(timeRange === '7D' ? -7 : -30).map(d => d.date.split('-').slice(1).join('/')) || [],
@@ -341,7 +318,7 @@ export default function Dashboard() {
       <ProjectModal
         isOpen={isProjectModalOpen}
         onClose={() => setIsProjectModalOpen(false)}
-        onSuccess={() => loadData()}
+        onSuccess={() => refreshData()}
       />
     </motion.div>
   );

@@ -130,6 +130,17 @@ h1, h2, h3, h4, .font-display {
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 .dark ::-webkit-scrollbar-thumb:hover { background: #64748b; }
 
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #334155;
+}
+
 /* Premium Transitions (Scoped for performance) */
 .transition-premium {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

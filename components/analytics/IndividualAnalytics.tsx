@@ -8,6 +8,7 @@ import {
   Task, Project, User, DashboardStats 
 } from '@/lib/types';
 import { useAuth } from '@/context/AuthContext';
+import { useData } from '@/context/DataContext';
 import { 
   Target, TrendingUp, AlertCircle, 
   Briefcase, CheckCircle2, Clock, Calendar, 
@@ -43,28 +44,15 @@ interface IndividualAnalyticsProps {
 
 export function IndividualAnalytics({ memberId, isAdminView = false }: IndividualAnalyticsProps) {
   const { user: currentUser } = useAuth();
-  const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<{
-    tasks: Task[];
-    projects: Project[];
-    user: User | null;
-    stats: DashboardStats | null;
-  }>({ tasks: [], projects: [], user: null, stats: null });
+  const { tasks: allTasks, projects, users, stats, loading: globalLoading } = useData();
 
-  useEffect(() => {
-    async function loadData() {
-      setLoading(true);
-      try {
-        const [tasks, projects, users, stats] = await Promise.all([
-          getTasks(), getProjects(), getUsers(), getDashboardStats()
-        ]);
-        const targetUser = users.find(u => u.id === memberId) || null;
-        const userTasks = tasks.filter(t => t.assigneeId === memberId);
-        setData({ tasks: userTasks, projects, user: targetUser, stats });
-      } finally { setLoading(false); }
-    }
-    loadData();
-  }, [memberId]);
+  const data = useMemo(() => {
+    const targetUser = users.find(u => u.id === memberId) || null;
+    const userTasks = allTasks.filter(t => t.assigneeId === memberId);
+    return { tasks: userTasks, projects, user: targetUser, stats };
+  }, [memberId, allTasks, projects, users, stats]);
+
+  const loading = globalLoading && data.tasks.length === 0;
 
   const metrics = useMemo(() => {
     const doneTasks = data.tasks.filter(t => t.status === 'done');
